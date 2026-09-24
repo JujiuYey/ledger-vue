@@ -1,0 +1,35 @@
+{
+  "name": "ledger-vue",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A Vue-native DataTable on TanStack Table and TanStack Virtual — the Vue port of ledger.",
+  "license": "MIT",
+  "author": {
+    "name": "Venus"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r run build",
+    "clean": "pnpm -r run clean",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "pnpm -r run typecheck",
+    "dev": "pnpm --filter ledger-vue-playground dev",
+    "playground:build": "pnpm --filter ledger-vue-playground build"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.0",
+    "@vitest/coverage-v8": "^4.0.0",
+    "@vue/test-utils": "^2.4.6",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.8.0",
+    "vite": "^7.0.0",
+    "vitest": "^4.0.0",
+    "vue": "^3.5.0",
+    "vue-tsc": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

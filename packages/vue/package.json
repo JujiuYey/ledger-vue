@@ -1,0 +1,73 @@
+{
+  "name": "@coldsmirk/ledger-vue",
+  "version": "0.1.0",
+  "description": "Vue-native <DataTable> on TanStack Table and TanStack Virtual: sorting, filtering, pagination, selection, pinning, inline editing, and adaptive row virtualization. The Vue port of @coldsmirk/ledger-mantine.",
+  "keywords": [
+    "data-table",
+    "datagrid",
+    "table",
+    "vue",
+    "tanstack-table",
+    "virtualization"
+  ],
+  "license": "MIT",
+  "author": {
+    "name": "Venus"
+  },
+  "sideEffects": [
+    "*.css"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "source": "./src/index.ts",
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./locales": {
+      "source": "./src/locales.ts",
+      "import": {
+        "types": "./dist/locales.d.ts",
+        "default": "./dist/locales.js"
+      },
+      "require": {
+        "types": "./dist/locales.d.cts",
+        "default": "./dist/locales.cjs"
+      }
+    },
+    "./package.json": "./package.json",
+    "./styles.css": {
+      "source": "./src/styles.css",
+      "default": "./dist/styles.css"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "clean": "rimraf dist",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@dnd-kit/dom": "^0.5.0",
+    "@tanstack/vue-table": "^9.2.4",
+    "@tanstack/vue-virtual": "^3.13.39",
+    "clsx": "^2.1.1"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

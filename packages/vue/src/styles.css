@@ -1,0 +1,1009 @@
+/*
+ * @coldsmirk/ledger-vue — layered stylesheet (the Vue edition of ledger's).
+ *
+ * Contract (docs/styling.md):
+ *   - every class is kebab-case under the `ledger-` prefix, mapped 1:1 from a camelCase
+ *     selector (root -> .ledger-root, headerCell -> .ledger-header-cell);
+ *   - state is expressed through data-attributes (data-selected, data-pinned="start"),
+ *     never through state classes;
+ *   - custom properties use the `--ledger-*` prefix — including the design tokens: this
+ *     edition has no component-library host, so the color/metric vocabulary is defined HERE
+ *     with light values on `.ledger-root` and dark values for `[data-color-scheme="dark"]`
+ *     (also under the OS preference until the attribute says otherwise). Every token is a
+ *     plain custom property — an app with a theming system of its own overrides them on any
+ *     ancestor, the same way it would override a host theme.
+ * Everything lives in the `ledger` layer; cross-library layer order is the app's call.
+ */
+
+@layer ledger {
+  /* ------------------------------------------------------------------------------------------
+   * Design tokens (Vue edition): the palette and metrics the rules below consume. Values
+   * follow the classic Mantine default theme so the port is visually drop-in.
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-root {
+    --ledger-color-body: #ffffff;
+    --ledger-color-default-border: #dee2e6;
+    --ledger-color-default-hover: rgb(0 0 0 / 4.5%);
+    --ledger-color-dimmed: #909296;
+    --ledger-color-gray-light: #f1f3f5;
+    --ledger-color-placeholder: #adb5bd;
+    --ledger-color-red-light: #fff0f6;
+    --ledger-color-red-light-color: #c2255c;
+    --ledger-font-size-xs: 12px;
+    --ledger-primary-color-filled: #228be6;
+    --ledger-primary-color-light: #e7f5ff;
+    --ledger-primary-color-light-hover: #d0ebff;
+    --ledger-radius-default: 4px;
+    --ledger-shadow-md:
+      0 0.25rem 0.75rem rgb(0 0 0 / 8%),
+      0 0.0625rem 0.1875rem rgb(0 0 0 / 5%);
+    --ledger-spacing-xs: 10px;
+    --ledger-spacing-sm: 12px;
+    --ledger-spacing-md: 16px;
+    --ledger-spacing-xl: 32px;
+    --ledger-z-index-popover: 300;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .ledger-root:not([data-color-scheme="light"]) {
+      --ledger-color-body: #1a1b1e;
+      --ledger-color-default-border: #373a40;
+      --ledger-color-default-hover: rgb(255 255 255 / 6%);
+      --ledger-color-gray-light: #2c2e33;
+      --ledger-color-red-light: #3d1a21;
+      --ledger-color-red-light-color: #ff8787;
+      --ledger-primary-color-light: rgb(34 139 230 / 15%);
+      --ledger-primary-color-light-hover: rgb(34 139 230 / 25%);
+      --ledger-shadow-md:
+        0 0.25rem 0.75rem rgb(0 0 0 / 35%),
+        0 0.0625rem 0.1875rem rgb(0 0 0 / 25%);
+    }
+  }
+
+  .ledger-root[data-color-scheme="dark"] {
+    --ledger-color-body: #1a1b1e;
+    --ledger-color-default-border: #373a40;
+    --ledger-color-default-hover: rgb(255 255 255 / 6%);
+    --ledger-color-gray-light: #2c2e33;
+    --ledger-color-red-light: #3d1a21;
+    --ledger-color-red-light-color: #ff8787;
+    --ledger-primary-color-light: rgb(34 139 230 / 15%);
+    --ledger-primary-color-light-hover: rgb(34 139 230 / 25%);
+    --ledger-shadow-md:
+      0 0.25rem 0.75rem rgb(0 0 0 / 35%),
+      0 0.0625rem 0.1875rem rgb(0 0 0 / 25%);
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Cells: padding lives on the element (Mantine's Table carried it in the React edition);
+   * the component writes --ledger-cell-padding-block/inline from the `size` scale and the
+   * two spacing props.
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-table th,
+  .ledger-table td {
+    padding: var(--ledger-cell-padding-block, 7px) var(--ledger-cell-padding-inline, 10px);
+    vertical-align: middle;
+    text-align: start;
+  }
+
+  .ledger-thead th {
+    font-weight: 500;
+  }
+
+  /* Screen-reader-only block for the live-region announcers. */
+  .ledger-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* The body scroller is a native overflow region in this edition — see .ledger-scroller below. */
+
+  /* ------------------------------------------------------------------------------------------
+   * Adaptive sizing (docs/sizing.md): the root fills whatever the parent gives it and
+   * degrades to content height when the parent is indefinite. min-width/min-height: 0
+   * pre-defuse the flex/grid min-size:auto shrink trap; overflow only ever appears on the
+   * internal scroller.
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-root {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+
+    /* `size` (the --ledger-font-size variable, docs/styling.md#size): the type every table under
+       the root inherits; a `fz` on the root is inline and still wins. */
+    font-size: var(--ledger-font-size);
+
+    /* `radius` (the --ledger-radius variable): the root rounds with the frame so a `bg` or the
+       pagination bar follows the same corners. */
+    border-radius: var(--ledger-radius, 0);
+  }
+
+  /* The frame around header + body — the elastic middle; carries the outer table border
+     (painted in the Borders section: four real sides). It clips its
+     own content so a `radius` rounds the header tint, the rows, and the frame together — every
+     positioned thing inside it (header actions, the empty state, the seam overlays) lives within
+     its box, and the row-drag ghost is portaled to the body. */
+  .ledger-main {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+    border-radius: var(--ledger-radius, 0);
+  }
+
+  /* The header viewport never scrolls by itself; its scrollLeft mirrors the body scroller. */
+  .ledger-header {
+    flex: none;
+    overflow: hidden;
+  }
+
+  /* The one elastic region — the native overflow region hosting the body table. Its bottom seam
+     line is an inset overlay (Borders section), so it needs a positioning context. */
+  .ledger-scroller {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+
+    /* overscroll-behavior: none — rubber-band overscroll translates the body past its clamped
+       scroll position, which the mirrored header/footer can never follow; the regions shear
+       apart for the duration of the bounce. */
+    overscroll-behavior: none;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ledger-color-default-border) transparent;
+  }
+
+  /* An empty (or errored-out) body has no rows to give the region height — keep a readable
+     floor under indefinite parents; the overlaid state block itself adds none. */
+  .ledger-root[data-empty] .ledger-scroller,
+  .ledger-root[data-error] .ledger-scroller {
+    min-height: 16rem;
+  }
+
+  /* With the active row enabled the body viewport is a keyboard focus stop — show it. */
+  .ledger-scroller[tabindex="0"]:focus-visible {
+    outline: 2px solid var(--ledger-primary-color-filled);
+    outline-offset: -2px;
+  }
+
+  /* The footer viewport (totals): always visible below the scroller, scrollLeft-mirrored.
+     Its separators live in the Borders section — the top seam belongs to the scroller. */
+  .ledger-footer {
+    flex: none;
+    overflow: hidden;
+  }
+
+  .ledger-table {
+    width: 100%;
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Header: rendered outside the body scroller (never occludes its scrollbar, never bounces
+   * with overscroll); cells only stick horizontally when pinned. Actions reveal on hover/focus.
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-header-cell {
+    position: relative;
+    vertical-align: middle;
+    background-color: var(--ledger-header-bg, var(--ledger-color-body));
+  }
+
+  .ledger-header-cell[data-pinned] {
+    position: sticky;
+    z-index: 2;
+  }
+
+  .ledger-header-cell[data-align="center"],
+  .ledger-cell[data-align="center"],
+  .ledger-footer-cell[data-align="center"] {
+    text-align: center;
+  }
+
+  .ledger-header-cell[data-align="end"],
+  .ledger-cell[data-align="end"],
+  .ledger-footer-cell[data-align="end"] {
+    text-align: end;
+  }
+
+  .ledger-header-label {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    max-width: 100%;
+    font: inherit;
+    color: inherit;
+    text-align: inherit;
+  }
+
+  /* The sort control is a NATIVE button (matched via its type attribute) reset here: layered
+     author rules always beat UA button styles, whereas Mantine's UnstyledButton carries an
+     unlayered font-size that would defeat the layered `font: inherit` above (the unlayered-host
+     rule, docs/styling.md). */
+  .ledger-header-label[type="button"] {
+    padding: 0;
+    appearance: none;
+    cursor: pointer;
+    background: none;
+    border: 0;
+  }
+
+  .ledger-header-label[data-align="center"] {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .ledger-header-label[data-align="end"] {
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  .ledger-header-label:focus-visible {
+    outline: 2px solid var(--ledger-primary-color-filled);
+    outline-offset: -2px;
+  }
+
+  .ledger-header-label [data-truncate],
+  .ledger-cell [data-truncate] {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Sort affordance: invisible until hover on unsorted columns, always visible once sorted. */
+  .ledger-sort-indicator {
+    display: inline-flex;
+    align-items: center;
+    color: var(--ledger-color-dimmed);
+    opacity: 0;
+  }
+
+  .ledger-header-cell:hover .ledger-sort-indicator,
+  .ledger-header-label:focus-visible .ledger-sort-indicator {
+    opacity: 0.6;
+  }
+
+  .ledger-sort-indicator[data-sorted] {
+    color: inherit;
+    opacity: 1;
+  }
+
+  .ledger-sort-indicator sup {
+    font-size: 0.7em;
+    font-weight: 600;
+  }
+
+  /* Actions overlay the trailing edge of the header cell and reveal on interaction. */
+  .ledger-header-actions {
+    position: absolute;
+    inset-inline-end: 4px;
+    top: 50%;
+    display: flex;
+    gap: 2px;
+    align-items: center;
+    padding-inline-start: 4px;
+    background-color: inherit;
+    opacity: 0;
+    translate: 0 -50%;
+  }
+
+  .ledger-header-actions:has([data-active]),
+  .ledger-header-actions:has([aria-expanded="true"]),
+  .ledger-header-cell:hover .ledger-header-actions,
+  .ledger-header-cell:focus-within .ledger-header-actions {
+    opacity: 1;
+  }
+
+  /* The resizer owns the cell's trailing strip (8px, z-index above the actions), so actions
+     clear out of it entirely: without this the filter button's outer pixels LOOK clickable but
+     hit the invisible resizer, and the button crowds within 1px of the drag line. */
+  .ledger-header-cell:has(.ledger-resizer) .ledger-header-actions {
+    inset-inline-end: 12px;
+  }
+
+  /* Resize handle on the trailing edge; the visible line appears on hover or while dragging. */
+  .ledger-resizer {
+    position: absolute;
+    inset-inline-end: 0;
+    top: 0;
+    z-index: 1;
+    width: 8px;
+    height: 100%;
+    touch-action: none;
+    cursor: col-resize;
+    user-select: none;
+  }
+
+  .ledger-resizer::after {
+    position: absolute;
+    inset-block: 15%;
+    inset-inline-end: 3px;
+    width: 2px;
+    content: "";
+    background-color: transparent;
+    border-radius: 1px;
+  }
+
+  /* Resting tick, only where the handle would otherwise be invisible: a borderless table marks
+     each resizable boundary with a faint mid-height line (precedent: MUI DataGrid's header
+     separators), so finding the handle takes no guessing. Column borders already say where
+     columns end, so bordered tables skip it; hover and drag swap in the taller primary line
+     either way — a two-step tell, like the Tooltip's delay. */
+  :where(.ledger-root:not([data-with-column-borders])) .ledger-resizer::after {
+    inset-block: 30%;
+    background-color: var(--ledger-color-default-border);
+  }
+
+  .ledger-resizer:hover::after,
+  .ledger-resizer[data-resizing]::after {
+    inset-block: 15%;
+    background-color: var(--ledger-primary-color-filled);
+  }
+
+  /* Drag-reorder feedback. */
+  .ledger-header-cell[data-dragging] {
+    opacity: 0.4;
+  }
+
+  .ledger-header-cell[data-drop-side]::before {
+    position: absolute;
+    inset-block: 0;
+    z-index: 3;
+    width: 2px;
+    content: "";
+    background-color: var(--ledger-primary-color-filled);
+  }
+
+  .ledger-header-cell[data-drop-side="before"]::before {
+    inset-inline-start: 0;
+  }
+
+  .ledger-header-cell[data-drop-side="after"]::before {
+    inset-inline-end: 0;
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Rows: every background flows through --ledger-row-bg, and pinned cells reference the same
+   * pipeline — a pinned column that fails to cover stripes/hover is unrepresentable.
+   * The paint site is the CELL, never the <tr>: Mantine ships an unlayered
+   * `tr { background-color: transparent }`, and unlayered author styles defeat any layered
+   * row-level paint regardless of specificity.
+   * Ancestry and extra state in these selectors is wrapped in :where() so every rule stays at
+   * (0,2,0) — SOURCE ORDER alone is the precedence ladder: stripes < hover < selected/active <
+   * their hover step < the cursor inside a selection < pinned < the editing row (below).
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-row {
+    --ledger-pinned-bg: var(--ledger-row-bg, var(--ledger-color-body));
+  }
+
+  .ledger-row > td {
+    background-color: var(--ledger-row-bg, transparent);
+  }
+
+  :where(.ledger-root[data-striped="odd"] .ledger-tbody) .ledger-row[data-parity="odd"],
+  :where(.ledger-root[data-striped="even"] .ledger-tbody) .ledger-row[data-parity="even"] {
+    --ledger-row-bg: var(--ledger-striped-color, var(--ledger-color-default-hover));
+  }
+
+  :where(.ledger-root[data-highlight-on-hover] .ledger-tbody) .ledger-row:hover {
+    --ledger-row-bg: var(--ledger-hover-color, var(--ledger-color-default-hover));
+  }
+
+  /* Selection and the active (keyboard-cursor) row rest at Mantine's calm light step; hovering
+     either takes the light-hover step — hover deepens a state, it never replaces it. */
+  .ledger-row[data-selected] {
+    --ledger-row-bg: var(--ledger-primary-color-light);
+  }
+
+  .ledger-row[data-active] {
+    --ledger-row-bg: var(--ledger-primary-color-light);
+  }
+
+  :where(.ledger-root[data-highlight-on-hover] .ledger-tbody) .ledger-row:where([data-selected], [data-active]):hover {
+    --ledger-row-bg: var(--ledger-primary-color-light-hover);
+  }
+
+  /* The cursor inside a selected block rests one step deeper — exactly one row is ever current,
+     and it has to stay findable there without an accent bar. */
+  .ledger-row[data-active]:where([data-selected]) {
+    --ledger-row-bg: var(--ledger-primary-color-light-hover);
+  }
+
+  .ledger-row[data-clickable] {
+    cursor: pointer;
+  }
+
+  /* Sticky pinned rows sit at the body scroller's edges, above the flow (the header lives
+     outside the scroller, so top offsets start at 0). */
+  .ledger-row[data-pinned-row] {
+    --ledger-row-bg: var(--ledger-color-body);
+    position: sticky;
+    z-index: 2;
+  }
+
+  .ledger-row[data-pinned-row="top"] {
+    top: 0;
+  }
+
+  .ledger-row[data-pinned-row="bottom"] {
+    bottom: 0;
+  }
+
+  /* Virtualization spacers carry geometry only — no borders, no background. */
+  .ledger-table tr[data-ledger-spacer] {
+    background: none;
+    border: 0;
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Cells
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-cell[data-pinned],
+  .ledger-selection-cell[data-pinned],
+  .ledger-expander-cell[data-pinned],
+  .ledger-row-drag-cell[data-pinned],
+  .ledger-footer-cell[data-pinned] {
+    position: sticky;
+    z-index: 2;
+    background-color: var(--ledger-pinned-bg, var(--ledger-color-body));
+  }
+
+  /* Pinned-edge scroll shadows, visible only while content is actually scrolled past. */
+  [data-pinned-edge]::after {
+    position: absolute;
+    inset-block: 0;
+    width: 8px;
+    pointer-events: none;
+    content: "";
+    opacity: 0;
+  }
+
+  [data-pinned-edge="start"]::after {
+    inset-inline-end: 0;
+    background: linear-gradient(to right, rgb(0 0 0 / 10%), transparent);
+    translate: 100% 0;
+  }
+
+  [data-pinned-edge="end"]::after {
+    inset-inline-start: 0;
+    background: linear-gradient(to left, rgb(0 0 0 / 10%), transparent);
+    translate: -100% 0;
+  }
+
+  [dir="rtl"] [data-pinned-edge="start"]::after {
+    background: linear-gradient(to left, rgb(0 0 0 / 10%), transparent);
+    translate: -100% 0;
+  }
+
+  [dir="rtl"] [data-pinned-edge="end"]::after {
+    background: linear-gradient(to right, rgb(0 0 0 / 10%), transparent);
+    translate: 100% 0;
+  }
+
+  .ledger-root[data-scrolled-start] [data-pinned-edge="start"]::after,
+  .ledger-root[data-scrolled-end] [data-pinned-edge="end"]::after {
+    opacity: 1;
+  }
+
+  .ledger-selection-cell,
+  .ledger-expander-cell,
+  .ledger-row-drag-cell {
+    vertical-align: middle;
+    text-align: center;
+  }
+
+  /* The reorder handle: grab affordance while live, quiet dim while something else controls
+     the order (the tooltip says what — labels.rowOrderingUnavailable). */
+  .ledger-row-drag-cell button {
+    vertical-align: middle;
+    cursor: grab;
+  }
+
+  .ledger-row-drag-cell button[aria-disabled] {
+    cursor: default;
+    opacity: 0.4;
+  }
+
+  /* An icon-only ActionIcon is an inline-flex box whose baseline is its bottom edge, so the
+     default `vertical-align: baseline` rides it a few pixels high of the middle-aligned cell's
+     center — the row chevron and the tree header's expand-all both need pinning to the middle. */
+  .ledger-expander-cell button,
+  .ledger-header-cell[data-ledger-column-id="ledger:expander"] button {
+    vertical-align: middle;
+  }
+
+  /* Expander chevrons rotate open (rows, groups, expand-all). */
+  .ledger-expander-cell button svg,
+  [data-group-cell] button svg,
+  .ledger-header-cell button[data-expanded] svg,
+  .ledger-expander-cell button[data-expanded] svg {
+    transition: rotate 150ms ease;
+  }
+
+  .ledger-expander-cell button[data-expanded] svg,
+  [data-group-cell] button[data-expanded] svg,
+  .ledger-header-cell button[data-expanded] svg {
+    rotate: 90deg;
+  }
+
+  [data-group-cell] {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    font-weight: 500;
+  }
+
+  [data-group-count] {
+    font-size: var(--ledger-font-size-xs);
+    color: var(--ledger-color-dimmed);
+  }
+
+  .ledger-cell[data-editing] {
+    padding-block: 2px;
+  }
+
+  /* An `xs` row is as tall as the smallest input Mantine draws: the editor takes the whole of it. */
+  .ledger-root[data-size="xs"] .ledger-cell[data-editing] {
+    padding-block: 0;
+  }
+
+  .ledger-cell-editor {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    width: 100%;
+  }
+
+  .ledger-cell-editor[data-pending] {
+    opacity: 0.7;
+  }
+
+  /* Instant columns: the live control keeps its place while its write is out — the pending
+     spinner hangs off the host, outside the flow the cell centers. */
+  .ledger-instant-cell {
+    position: relative;
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    vertical-align: middle;
+  }
+
+  .ledger-instant-spinner {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-start: calc(100% + 6px);
+    transform: translateY(-50%);
+  }
+
+  /* Row-mode editing: the whole row reads as one open form — a quiet primary wash plus a
+     hairline above and below drawn by the cells, so pinned cells carry the frame too. */
+  .ledger-row[data-editing-row] {
+    --ledger-row-bg: var(--ledger-primary-color-light);
+  }
+
+  .ledger-row[data-editing-row] > * {
+    box-shadow:
+      inset 0 1px 0 0 var(--ledger-primary-color-filled),
+      inset 0 -1px 0 0 var(--ledger-primary-color-filled);
+  }
+
+  /* Row reordering (docs/rows.md#row-ordering): the lifted row dims in place, and the target
+     row draws the drop edge — on its cells, so pinned cells carry the line too. */
+  .ledger-row[data-dragging] {
+    opacity: 0.4;
+  }
+
+  .ledger-row[data-drop-side="before"] > * {
+    box-shadow: inset 0 2px 0 0 var(--ledger-primary-color-filled);
+  }
+
+  .ledger-row[data-drop-side="after"] > * {
+    box-shadow: inset 0 -2px 0 0 var(--ledger-primary-color-filled);
+  }
+
+  /* The pointer ghost: a snapshot of the whole lifted row (row-reorder.tsx clones it under
+     per-column pixel widths), positioned imperatively and portaled to the body — never part
+     of the table's flow. */
+  .ledger-row-drag-overlay {
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    z-index: var(--ledger-z-index-popover);
+    overflow: hidden;
+    pointer-events: none;
+    background-color: var(--ledger-color-body);
+    border: 1px solid var(--ledger-color-default-border);
+    border-radius: var(--ledger-radius-default);
+    box-shadow: var(--ledger-shadow-md);
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Detail panels, footer, states, chrome
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-detail-panel {
+    padding: var(--ledger-spacing-sm) var(--ledger-spacing-md);
+  }
+
+  .ledger-footer-cell {
+    font-weight: 600;
+    background-color: var(--ledger-color-body);
+  }
+
+  /* Overlaid on the whole body region (the scroller is its positioning context): centered in
+     the VISIBLE area, and immune to horizontal scrolling of the empty table underneath.
+     The EmptyState variables soften Mantine's stock indicator (gray-1 disc, dimmed icon) —
+     inside a bare table body it reads heavy; both substitutes are color-scheme-adaptive. */
+  .ledger-empty {
+    --empty-state-indicator-bg: var(--ledger-color-default-hover);
+    --empty-state-indicator-color: var(--ledger-color-placeholder);
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--ledger-spacing-xl) var(--ledger-spacing-md);
+  }
+
+  /* The error panel keeps the quiet disc but tints it with the light error pair, both
+     color-scheme-adaptive. */
+  .ledger-empty[data-variant="error"] {
+    --empty-state-indicator-bg: var(--ledger-color-red-light);
+    --empty-state-indicator-color: var(--ledger-color-red-light-color);
+  }
+
+  /* Error over stale rows: a body-tinted scrim. Weighted for the message, not the rows — the
+     panel's own text sits on top of them, so the scrim has to win that contrast outright; the
+     rows survive as a ghost that says "still here, not current". */
+  .ledger-empty[data-over-rows] {
+    z-index: 2;
+    background-color: color-mix(in srgb, var(--ledger-color-body) 92%, transparent);
+  }
+
+  .ledger-loader-row td {
+    padding-block: var(--ledger-spacing-sm);
+    color: var(--ledger-color-dimmed);
+    border-bottom: 0;
+  }
+
+  /* The cell holds a centred pair — spinner + text, or message + retry — so it is laid out as
+     one flex line rather than as inline boxes. Inline layout aligns them on the BASELINE, which
+     leaves a text run and a button a pixel or two apart and drifts further whenever either
+     changes height (adding the retry icon moved it again). The cell itself cannot be the flex
+     container: that would strip the `<td>` of its table-cell box and with it the colSpan that
+     makes this row span the table. */
+  .ledger-loader-row-content {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* The retry button carries its own horizontal padding, so the pair needs less between them. */
+  .ledger-loader-row[data-error] .ledger-loader-row-content {
+    gap: 4px;
+  }
+
+  .ledger-pagination-bar {
+    flex: none;
+  }
+
+  .ledger-root > .ledger-pagination-bar {
+    padding: var(--ledger-spacing-xs) var(--ledger-spacing-sm);
+    border-block-start: 1px solid var(--ledger-color-default-border);
+  }
+
+  /* The seam above the bar is owned by the table's own bottom edge (the frame, or the closing
+     line — Borders section); the bar draws its own line only when no such edge exists. */
+  .ledger-root[data-with-table-border] > .ledger-pagination-bar,
+  .ledger-root[data-with-bottom-border] > .ledger-pagination-bar {
+    border-block-start: 0;
+  }
+
+  .ledger-selection-bar {
+    padding: var(--ledger-spacing-xs) 0;
+  }
+
+  /* The columns panel (docs/columns.md) is bare content whose host owns its box: it fills a
+     definite one (a drawer) and degrades to content height in an indefinite one (a popover) —
+     the same adaptive contract the table root follows. The list is the only elastic region, so
+     a long column set scrolls inside the panel instead of overflowing it.
+
+     Presentation contract: at rest a row is identity — checkbox and name — plus dimmed marks
+     where the layout deviates from default (captions over pinned zones, an overridden width, a
+     grouped column, a dimmed hidden name). The machinery — handle, width field, pin segment,
+     group toggle — reveals on the hovered or keyboard-focused row as an overlaid toolbar, so
+     resting names keep the full row width. Where hover does not exist the toolbar sits inline
+     (the hover-none block after the base panel rules). */
+  .ledger-columns-panel {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 280px;
+    max-height: 100%;
+    padding: var(--ledger-spacing-xs);
+  }
+
+  /* No inline padding: the title and the reset button align to the zone slabs' edges below,
+     which are the panel's visual frame — the rows' own 8px inset is interior to that frame. */
+
+  /* The gap under the hairline repeats the panel's own padding token, so the content block
+     sits at the same distance from all four of its frame edges. */
+  .ledger-columns-panel-header {
+    padding: 4px 0 10px;
+    margin-block-end: var(--ledger-spacing-xs);
+    border-block-end: 1px solid var(--ledger-color-default-border);
+  }
+
+  .ledger-columns-panel-list {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+  }
+
+  .ledger-columns-panel-zone {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  /* Pinned zones are shelves: the tinted slab marks the drag boundary (a column sorts only
+     among its own kind) the way the pinned columns' own opaque background marks them in the
+     table. Nothing pinned means one flat list and zero chrome. Block padding only — inline
+     padding would shift the rows' handle/checkbox/name columns off the center zone's. */
+  .ledger-columns-panel-zone[data-pinned] {
+    padding-block: 4px;
+    background-color: var(--ledger-color-gray-light);
+    border-radius: var(--ledger-radius-default);
+  }
+
+  .ledger-columns-panel-zone + .ledger-columns-panel-zone {
+    margin-block-start: 8px;
+  }
+
+  /* The caption pairs the zone's pin glyph with its name, tying the shelf to the same vocabulary
+     the row's pin segments speak. It is a ledger-owned div (Mantine's unlayered Text reset would
+     zero a padding set here), so its type and color live here too; line-height 1 collapses the
+     text's line box onto the glyph's 12px so flex centering aligns their midlines exactly. */
+  .ledger-columns-panel-zone-label {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    padding: 4px 8px;
+    font-size: var(--ledger-font-size-xs);
+    font-weight: 500;
+    line-height: 1;
+    color: var(--ledger-color-dimmed);
+  }
+
+  /* Radii across the panel — the tinted shelves, this hover pill, and the toolbar backdrop —
+     follow the theme's default radius, the same token the toolbar's Mantine controls resolve
+     with no radius prop, so the whole cluster rounds as one under any host theme. */
+  .ledger-columns-panel-item {
+    position: relative;
+    min-height: 36px;
+    padding: 2px 8px;
+    border-radius: var(--ledger-radius-default);
+  }
+
+  /* focus-within matches :hover because the toolbar below reveals on both. */
+  .ledger-columns-panel-item:hover,
+  .ledger-columns-panel-item:focus-within {
+    background-color: var(--ledger-color-default-hover);
+  }
+
+  /* The row keeps its seat, greyed, while dnd-kit's clone follows the pointer. */
+  .ledger-columns-panel-item[data-dragging] {
+    opacity: 0.4;
+  }
+
+  /* A translucent grip is enough of a "this list reorders" hint; the hovered row sharpens it. */
+  .ledger-columns-panel-handle {
+    cursor: grab;
+    opacity: 0.3;
+    transition: opacity 120ms ease;
+  }
+
+  .ledger-columns-panel-item:hover .ledger-columns-panel-handle,
+  .ledger-columns-panel-item:focus-within .ledger-columns-panel-handle {
+    opacity: 1;
+  }
+
+  .ledger-columns-panel-item[data-dragging] .ledger-columns-panel-handle {
+    cursor: grabbing;
+  }
+
+  /* The checkbox's label wrapper. Mantine already clears min-width on the body between them, so
+     this is the last link in the chain that must be allowed to shrink; without it the nowrap
+     title below sets an unshrinkable floor and shoves the rest of the row out of alignment. */
+  .ledger-columns-panel-label {
+    min-width: 0;
+  }
+
+  /* Long titles ellipse rather than wrap — a two-line row among one-line rows reads as a break
+     in the list. */
+  .ledger-columns-panel-label > label {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Hidden columns stay listed — bringing them back is the point — but read as absent. The
+     color sits on OUR wrapper, not on Mantine's label: that label declares `color: inherit` in
+     a stylesheet the host may load unlayered, where it would beat anything the ledger layer
+     says — but inheritance it can only obey. */
+  .ledger-columns-panel-item[data-hidden] .ledger-columns-panel-label {
+    color: var(--ledger-color-dimmed);
+  }
+
+  .ledger-columns-panel-indicators {
+    display: flex;
+    flex: none;
+    gap: 6px;
+    align-items: center;
+    font-variant-numeric: tabular-nums;
+    color: var(--ledger-color-dimmed);
+    white-space: nowrap;
+  }
+
+  /* The revealed toolbar. Overlaid rather than inline so resting rows spend the space on the
+     name; its own backdrop matches the hovered row and fades in over the name's tail. */
+  .ledger-columns-panel-controls {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-end: 0;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding-inline: 8px;
+    pointer-events: none;
+    background-color: var(--ledger-color-default-hover);
+    border-start-end-radius: var(--ledger-radius-default);
+    border-end-end-radius: var(--ledger-radius-default);
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  .ledger-columns-panel-controls::before {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: -24px;
+    width: 24px;
+    content: "";
+    background: linear-gradient(to right, transparent, var(--ledger-color-default-hover));
+  }
+
+  [dir="rtl"] .ledger-columns-panel-controls::before {
+    background: linear-gradient(to left, transparent, var(--ledger-color-default-hover));
+  }
+
+  .ledger-columns-panel-item:hover .ledger-columns-panel-controls,
+  .ledger-columns-panel-item:focus-within .ledger-columns-panel-controls {
+    pointer-events: auto;
+    opacity: 1;
+  }
+
+  /* Widths are numbers the table's own cells would show right-aligned and tabular. */
+  .ledger-columns-panel-width-input {
+    font-variant-numeric: tabular-nums;
+    text-align: end;
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Borders — ledger-owned at cell level. The host paints row borders on <tr> under
+   * border-collapse: collapse, and Chrome does not repaint collapsed borders at stuck sticky
+   * positions; our tables are border-collapse: separate (inline), so every cell carries its
+   * border wherever it sticks.
+   *
+   * Three edges, one line each (docs/styling.md#borders): row separators sit BETWEEN rows and
+   * never under the last one (Mantine's Table rule — a bordered host closes the table with its
+   * own edge); the closing line under the body is the opt-in `withBottomBorder` seam; the
+   * `withTableBorder` frame is four real borders and owns every edge, so under it the body's
+   * seam and the footer's trailing line stay off.
+   * ------------------------------------------------------------------------------------------ */
+
+  /* Row separators, header half: the header's bottom edge. (The body half follows the column
+     rule — the two share `th`/`td` targets with crossing specificities, and each half must sit
+     on its ascending side.) */
+  .ledger-root[data-with-row-borders] .ledger-thead th {
+    border-block-end: 1px solid var(--ledger-border-color, var(--ledger-color-default-border));
+  }
+
+  /* Header and footer rows always render every position, so DOM order IS column order there.
+     Body rows do not: `spanRows` drops the cells a merged run covers, which promotes whatever
+     renders next to `:first-child` and would strip the border off a mid-table column. The cell
+     carries `data-leading` for its real (pinning-aware) display position instead. */
+  .ledger-root[data-with-column-borders] .ledger-table th:not(:first-child),
+  .ledger-root[data-with-column-borders] .ledger-table td:not([data-leading]) {
+    border-inline-start: 1px solid var(--ledger-border-color, var(--ledger-color-default-border));
+  }
+
+  /* Row separators, body half: every body row but the last (`data-last`, a `spanRows` anchor
+     ending there included). */
+  .ledger-root[data-with-row-borders] .ledger-tbody .ledger-row:not([data-last]) > td:not([data-last]) {
+    border-block-end: 1px solid var(--ledger-border-color, var(--ledger-color-default-border));
+  }
+
+  /* The body's bottom seam: an inset overlay on the scroller's last pixel — it adds no height
+     and stays put under scroll. It paints as the closing line (`withBottomBorder`, unframed: the
+     frame's own bottom border would stack under it) and, with row borders, as the separator
+     above a footer. z-index 2 = the pinned-cell tier: generated after every cell, so it paints
+     over scrolling pinned cells (their opaque backgrounds would erase the line mid-scroll) while
+     staying under the scrollbars (3). */
+  .ledger-root[data-with-bottom-border]:not([data-with-table-border]) .ledger-scroller::after,
+  .ledger-root[data-with-row-borders][data-with-footer] .ledger-scroller::after {
+    position: absolute;
+    inset-block-end: 0;
+    inset-inline: 0;
+    z-index: 2;
+    height: 1px;
+    pointer-events: none;
+    content: "";
+    background-color: var(--ledger-border-color, var(--ledger-color-default-border));
+  }
+
+  /* The footer separates from the body with the seam above it; its trailing edge is the closing
+     line, on the body's own terms. */
+  .ledger-root[data-with-bottom-border]:not([data-with-table-border]) .ledger-footer {
+    border-block-end: 1px solid var(--ledger-border-color, var(--ledger-color-default-border));
+  }
+
+  /* The frame: four real borders, so a `radius` draws continuous corners; nothing inside paints
+     on its bottom pixel (no last-row separator, no closing seam, no footer trailing line). */
+  .ledger-root[data-with-table-border] .ledger-main {
+    border: 1px solid var(--ledger-border-color, var(--ledger-color-default-border));
+  }
+}
+
+/* Interaction overrides reopen the same layer after every base rule, so equal-specificity base
+   declarations cannot win through source order. */
+@layer ledger {
+  /* No hover, no reveal: the toolbar lives inline and the rest-state marks stand down — the
+     controls sitting right there already say the same thing. */
+  @media (hover: none) {
+    .ledger-columns-panel-handle {
+      opacity: 1;
+    }
+
+    .ledger-columns-panel-indicators {
+      display: none;
+    }
+
+    .ledger-columns-panel-controls {
+      position: static;
+      flex: none;
+      padding-inline: 0;
+      pointer-events: auto;
+      background-color: transparent;
+      opacity: 1;
+    }
+
+    .ledger-columns-panel-controls::before {
+      content: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ledger-expander-cell button svg,
+    [data-group-cell] button svg,
+    .ledger-expander-cell button[data-expanded] svg,
+    .ledger-header-cell button[data-expanded] svg,
+    .ledger-columns-panel-handle,
+    .ledger-columns-panel-controls {
+      transition: none;
+    }
+  }
+}

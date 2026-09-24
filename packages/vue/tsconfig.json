@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // vue-tsc needs the JSX/emit knobs off but understands .vue SFCs natively through this
+    // package's types; no extra config required beyond the shared base.
+    "jsx": "preserve"
+  },
+  "include": ["src"]
+}

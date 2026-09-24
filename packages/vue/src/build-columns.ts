@@ -1,0 +1,196 @@
+/**
+ * Column preprocessing for `useDataTable`: inject the selection and expander columns (pinned
+ * left, fixed width, excluded from every data feature) and derive `filterFn`s from
+ * `meta.filter` variants for columns that declare none themselves.
+ *
+ * Vue edition: the injected columns' `cell` / `header` renderers are render functions returning
+ * VNodes (`h(Component, props)`), which `flexRender` consumes like any renderer.
+ */
+import type { RowData } from "@tanstack/vue-table";
+import { h } from "vue";
+
+import type { Column, ColumnDef } from "./types";
+
+import { ExpanderCell, ExpanderHeaderCell } from "./expander";
+import { filterFnByVariant } from "./filter-fns";
+import { RowDragCell } from "./row-reorder-cell";
+import { SelectionCell, SelectionHeaderCell } from "./selection";
+
+export const ROW_DRAG_COLUMN_ID = "ledger:row-drag";
+export const SELECTION_COLUMN_ID = "ledger:select";
+export const EXPANDER_COLUMN_ID = "ledger:expander";
+
+export function isInternalColumn(columnId: string): boolean {
+  return columnId === ROW_DRAG_COLUMN_ID || columnId === SELECTION_COLUMN_ID || columnId === EXPANDER_COLUMN_ID;
+}
+
+/**
+ * Human-readable column title for every plain-text surface — the columns panel, CSV headers,
+ * filter and editor field names. An explicit `meta.label` wins; otherwise the string `header`;
+ * a render-function header falls back to the column id, which is why such columns should
+ * declare a `meta.label`.
+ */
+export function columnHeaderText<TData extends RowData>(column: Column<TData, unknown>): string {
+  const { header, meta } = column.columnDef;
+
+  return meta?.label ?? (typeof header === "string" ? header : column.id);
+}
+
+export interface BuildColumnsInput<TData extends RowData> {
+
+  columns: Array<ColumnDef<TData, any>>;
+  withRowDrag: boolean;
+  withSelection: boolean;
+  withExpander: boolean;
+  rowDragColumn?: Partial<ColumnDef<TData, unknown>>;
+  selectionColumn?: Partial<ColumnDef<TData, unknown>>;
+  expanderColumn?: Partial<ColumnDef<TData, unknown>>;
+}
+
+/**
+ * Author-declared sizing, snapshotted per leaf definition BEFORE TanStack merges its default
+ * column def (size 150, minSize 20) into every `column.columnDef` — after that merge, "the
+ * author declared no size" is indistinguishable from "the author chose 150". The width engine
+ * (docs/sizing.md) reads this registry through the per-column meta clone created below.
+ */
+export interface RawColumnSizing {
+  size: number | undefined;
+  minSize: number | undefined;
+  maxSize: number | undefined;
+}
+
+const rawSizingByMeta = new WeakMap<object, RawColumnSizing>();
+
+export function rawColumnSizing(columnDef: { meta?: object }): RawColumnSizing | undefined {
+  return columnDef.meta ? rawSizingByMeta.get(columnDef.meta) : undefined;
+}
+
+/**
+ * The per-column `enableResizing` knob rides ledger's `ColumnDef` alias — the TanStack module
+ * that would declare it (`columnResizingFeature`) is deliberately unregistered — so reads off
+ * the resolved instance definition narrow here.
+ */
+export function columnEnableResizing(columnDef: object): boolean | undefined {
+  return (columnDef as { enableResizing?: boolean }).enableResizing;
+}
+
+/**
+ * An injected column is an ordinary def, so an override is an ordinary merge — the author's keys
+ * win over ledger's defaults. The id alone is reserved: `isInternalColumn` is how the render
+ * layer recognizes these columns (centered content, stop-propagation, excluded from CSV and the
+ * columns panel), so it is reapplied last.
+ */
+function injectedColumn<TData extends RowData>(
+  defaults: ColumnDef<TData, any>,
+  override: Partial<ColumnDef<TData, unknown>> | undefined
+): ColumnDef<TData, any> {
+  return processLeaf(
+    override
+      ? {
+          ...defaults,
+          ...override,
+          id: defaults.id
+        } as ColumnDef<TData, any>
+      : defaults
+  );
+}
+
+export function buildColumns<TData extends RowData>({
+  columns,
+  withRowDrag,
+  withSelection,
+  withExpander,
+  rowDragColumn,
+  selectionColumn,
+  expanderColumn
+}: BuildColumnsInput<TData>): Array<ColumnDef<TData, any>> {
+  const result: Array<ColumnDef<TData, any>> = [];
+
+  if (withRowDrag) {
+    // The injected columns declare no sizing: the width engine sizes them by the table's
+    // `size` (docs/sizing.md), and an override's own bounds win bound by bound.
+    result.push(injectedColumn<TData>({
+      id: ROW_DRAG_COLUMN_ID,
+      enableSorting: false,
+      enableHiding: false,
+      enableResizing: false,
+      enableColumnFilter: false,
+      enableGlobalFilter: false,
+      enableGrouping: false,
+      // A header with nothing to say: the handles below explain themselves, and the drag
+      // column offers no all-rows action the way selection's header checkbox does.
+      header: () => null,
+      cell: (ctx: any) => h(RowDragCell, { row: ctx.row, table: ctx.table })
+    }, rowDragColumn));
+  }
+
+  if (withSelection) {
+    result.push(injectedColumn<TData>({
+      id: SELECTION_COLUMN_ID,
+      enableSorting: false,
+      enableHiding: false,
+      enableResizing: false,
+      enableColumnFilter: false,
+      enableGlobalFilter: false,
+      enableGrouping: false,
+      header: (ctx: any) => h(SelectionHeaderCell, { table: ctx.table }),
+      cell: (ctx: any) => h(SelectionCell, { row: ctx.row })
+    }, selectionColumn));
+  }
+
+  if (withExpander) {
+    result.push(injectedColumn<TData>({
+      id: EXPANDER_COLUMN_ID,
+      enableSorting: false,
+      enableHiding: false,
+      enableResizing: false,
+      enableColumnFilter: false,
+      enableGlobalFilter: false,
+      enableGrouping: false,
+      header: (ctx: any) => h(ExpanderHeaderCell, { table: ctx.table }),
+      cell: (ctx: any) => h(ExpanderCell, { row: ctx.row })
+    }, expanderColumn));
+  }
+
+  for (const column of columns) {
+    result.push(processColumn(column));
+  }
+
+  return result;
+}
+
+/**
+ * Group definitions recurse so every LEAF gets processed — its raw sizing registered and its
+ * `meta.filter` variant mapped.
+ */
+function processColumn<TData extends RowData>(column: ColumnDef<TData, any>): ColumnDef<TData, any> {
+  if ("columns" in column && Array.isArray(column.columns)) {
+    return { ...column, columns: column.columns.map(child => processColumn(child)) };
+  }
+
+  return processLeaf(column);
+}
+
+function processLeaf<TData extends RowData>(column: ColumnDef<TData, any>): ColumnDef<TData, any> {
+  // A fresh meta clone per leaf keys the raw-sizing registry (and survives TanStack's merge).
+  const meta = { ...column.meta };
+  rawSizingByMeta.set(meta, {
+    size: column.size,
+    minSize: column.minSize,
+    maxSize: column.maxSize
+  });
+
+  return withVariantFilterFn({ ...column, meta });
+}
+
+function withVariantFilterFn<TData extends RowData>(column: ColumnDef<TData, any>): ColumnDef<TData, any> {
+  const filter = column.meta?.filter;
+
+  if (!filter || typeof filter === "function" || column.filterFn) {
+    return column;
+  }
+
+  const variant = typeof filter === "string" ? filter : filter.variant;
+
+  return { ...column, filterFn: filterFnByVariant[variant] };
+}
