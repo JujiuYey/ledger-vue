@@ -18,6 +18,7 @@ export default defineConfig({
     rollupOptions: {
       external: ["vue", "@tanstack/vue-table", "@tanstack/vue-virtual", "clsx", "@dnd-kit/dom"],
       output: {
+        exports: "named",
         // Named asset so the "./styles.css" export path is stable in dist.
         assetFileNames: (asset) => (asset.name === "style.css" ? "styles.css" : asset.name ?? "[name]")
       }

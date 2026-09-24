@@ -54,7 +54,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && vue-tsc --declaration --emitDeclarationOnly -p tsconfig.build.json && cp src/styles.css dist/styles.css",
     "clean": "rimraf dist",
     "typecheck": "vue-tsc --noEmit"
   },

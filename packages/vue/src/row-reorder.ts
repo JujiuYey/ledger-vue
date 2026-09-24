@@ -1,4 +1,4 @@
-import type { PointerSensorOptions } from "@dnd-kit/dom";
+import type { Sensors, PointerSensorOptions  } from "@dnd-kit/dom";
 import type { DragEndEvent, DragMoveEvent, DragStartEvent } from "@dnd-kit/dom";
 import type { RowData } from "@tanstack/vue-table";
 import type { Ref } from "vue";
@@ -47,7 +47,7 @@ const activationConstraints: PointerSensorOptions["activationConstraints"] = eve
   ? [new PointerActivationConstraints.Delay({ value: 250, tolerance: 5 })]
   : [new PointerActivationConstraints.Distance({ value: 5 })];
 
-export const ROW_REORDER_SENSORS = [PointerSensor.configure({ activationConstraints })];
+export const ROW_REORDER_SENSORS: Sensors = [PointerSensor.configure({ activationConstraints })];
 export const ROW_REORDER_PLUGINS = [AutoScroller, Cursor, PreventSelection];
 
 export interface RowReorderTarget {
