@@ -1007,3 +1007,686 @@
     }
   }
 }
+
+/*
+ * Chrome controls (the Vue edition): the React edition drew these from Mantine — Button,
+ * Checkbox, inputs, the select family, Popover, Loader — and this block is their replacement.
+ * It styles ONLY the chrome-control classes and the layout the former Mantine Group/Stack
+ * wrappers provided around the existing columns-panel classes (same selectors, later source
+ * order, so the layout declarations complete the earlier rules without editing them).
+ *
+ * Sizes ride [data-size] on the control roots, matching LedgerSize; the control heights are the
+ * classic input heights (30/36/42/50/60) the size scale already cites. Everything consumes the
+ * --ledger-* tokens defined at the top of the file, so dark mode and RTL come from the same
+ * pipeline as the table itself.
+ */
+@layer ledger {
+  /* Size scale: defaults (no attribute) are `sm`; every control root publishes the custom
+     properties its subtree consumes. --ledger-text-size is the bar's text, --ledger-control-* the
+     controls'. */
+  .ledger-button,
+  .ledger-checkbox,
+  .ledger-input,
+  .ledger-select,
+  .ledger-multiselect,
+  .ledger-search,
+  .ledger-pagination-bar {
+    --ledger-control-height: 36px;
+    --ledger-control-font-size: 13px;
+    --ledger-control-pad-inline: 10px;
+    --ledger-checkbox-size: 16px;
+    --ledger-text-size: 13px;
+  }
+
+  .ledger-button[data-size="xs"],
+  .ledger-checkbox[data-size="xs"],
+  .ledger-select[data-size="xs"],
+  .ledger-multiselect[data-size="xs"],
+  .ledger-pagination-bar[data-size="xs"] {
+    --ledger-control-height: 30px;
+    --ledger-control-font-size: 12px;
+    --ledger-control-pad-inline: 8px;
+    --ledger-checkbox-size: 14px;
+    --ledger-text-size: 12px;
+  }
+
+  .ledger-button[data-size="md"],
+  .ledger-checkbox[data-size="md"],
+  .ledger-select[data-size="md"],
+  .ledger-multiselect[data-size="md"],
+  .ledger-pagination-bar[data-size="md"] {
+    --ledger-control-height: 42px;
+    --ledger-control-font-size: 14px;
+    --ledger-control-pad-inline: 12px;
+    --ledger-checkbox-size: 18px;
+    --ledger-text-size: 14px;
+  }
+
+  .ledger-button[data-size="lg"],
+  .ledger-checkbox[data-size="lg"],
+  .ledger-select[data-size="lg"],
+  .ledger-multiselect[data-size="lg"],
+  .ledger-pagination-bar[data-size="lg"] {
+    --ledger-control-height: 50px;
+    --ledger-control-font-size: 15px;
+    --ledger-control-pad-inline: 14px;
+    --ledger-checkbox-size: 20px;
+    --ledger-text-size: 15px;
+  }
+
+  .ledger-button[data-size="xl"],
+  .ledger-checkbox[data-size="xl"],
+  .ledger-select[data-size="xl"],
+  .ledger-multiselect[data-size="xl"],
+  .ledger-pagination-bar[data-size="xl"] {
+    --ledger-control-height: 60px;
+    --ledger-control-font-size: 16px;
+    --ledger-control-pad-inline: 16px;
+    --ledger-checkbox-size: 22px;
+    --ledger-text-size: 16px;
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Button
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-button {
+    position: relative;
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: center;
+    height: var(--ledger-control-height);
+    padding-inline: var(--ledger-control-pad-inline);
+    font: inherit;
+    font-size: var(--ledger-control-font-size);
+    font-weight: 500;
+    color: inherit;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+    background-color: var(--ledger-color-body);
+    border: 1px solid var(--ledger-color-default-border);
+    border-radius: var(--ledger-radius-default);
+  }
+
+  .ledger-button > svg {
+    flex: none;
+  }
+
+  .ledger-button:focus-visible {
+    outline: 2px solid var(--ledger-primary-color-filled);
+    outline-offset: 2px;
+  }
+
+  .ledger-button:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .ledger-button[data-variant="default"]:hover:not(:disabled) {
+    background-color: var(--ledger-color-gray-light);
+  }
+
+  .ledger-button[data-variant="light"] {
+    color: var(--ledger-primary-color-filled);
+    background-color: var(--ledger-primary-color-light);
+    border-color: transparent;
+  }
+
+  .ledger-button[data-variant="light"]:hover:not(:disabled) {
+    background-color: var(--ledger-primary-color-light-hover);
+  }
+
+  .ledger-button[data-variant="subtle"] {
+    background-color: transparent;
+    border-color: transparent;
+  }
+
+  .ledger-button[data-variant="subtle"]:hover:not(:disabled) {
+    background-color: var(--ledger-color-default-hover);
+  }
+
+  /* The tiny square X the input family's clear affordances are drawn with (Mantine's CloseButton). */
+  .ledger-clear-button {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    background: transparent;
+    border: 0;
+    border-radius: var(--ledger-radius-default);
+  }
+
+  .ledger-clear-button > svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .ledger-clear-button:hover {
+    background-color: var(--ledger-color-default-hover);
+  }
+
+  .ledger-clear-button:focus-visible {
+    outline: 2px solid var(--ledger-primary-color-filled);
+    outline-offset: 1px;
+  }
+
+  .ledger-clear-button:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Checkbox — a native input (focus, space, :checked / :indeterminate) plus a styled box. The
+   * box also speaks data-checked / data-indeterminate so the multiselect options can reuse the
+   * paint without an input sibling.
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-checkbox {
+    position: relative;
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    min-width: 0;
+    cursor: pointer;
+  }
+
+  .ledger-checkbox:has(.ledger-checkbox-input:disabled) {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .ledger-checkbox-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .ledger-checkbox-box {
+    position: relative;
+    display: inline-block;
+    flex: none;
+    box-sizing: border-box;
+    width: var(--ledger-checkbox-size);
+    height: var(--ledger-checkbox-size);
+    background-color: var(--ledger-color-body);
+    border: 1px solid var(--ledger-color-default-border);
+    border-radius: var(--ledger-radius-default);
+  }
+
+  .ledger-checkbox-box::after {
+    position: absolute;
+    inset-inline-start: 25%;
+    inset-block-start: 12%;
+    width: 34%;
+    height: 56%;
+    content: "";
+    rotate: 45deg;
+    opacity: 0;
+    border-block-end: 2px solid #fff;
+    border-inline-end: 2px solid #fff;
+  }
+
+  .ledger-checkbox-input:checked + .ledger-checkbox-box,
+  .ledger-checkbox-input:indeterminate + .ledger-checkbox-box,
+  .ledger-checkbox-box[data-checked],
+  .ledger-checkbox-box[data-indeterminate] {
+    background-color: var(--ledger-primary-color-filled);
+    border-color: var(--ledger-primary-color-filled);
+  }
+
+  .ledger-checkbox-input:checked + .ledger-checkbox-box::after,
+  .ledger-checkbox-box[data-checked]::after {
+    opacity: 1;
+  }
+
+  /* The indeterminate bar replaces the check, not stacks on it. */
+  .ledger-checkbox-input:indeterminate + .ledger-checkbox-box::after,
+  .ledger-checkbox-box[data-indeterminate]::after {
+    inset: calc(50% - 1px) 15%;
+    width: auto;
+    height: 2px;
+    rotate: none;
+    border: 0;
+    background-color: #fff;
+  }
+
+  .ledger-checkbox-input:focus-visible + .ledger-checkbox-box {
+    outline: 2px solid var(--ledger-primary-color-filled);
+    outline-offset: 2px;
+  }
+
+  .ledger-checkbox-label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Inputs
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-input {
+    display: inline-block;
+    box-sizing: border-box;
+    min-width: 0;
+    height: var(--ledger-control-height);
+    padding-inline: var(--ledger-control-pad-inline);
+    font: inherit;
+    font-size: var(--ledger-control-font-size);
+    color: inherit;
+    background-color: var(--ledger-color-body);
+    border: 1px solid var(--ledger-color-default-border);
+    border-radius: var(--ledger-radius-default);
+  }
+
+  .ledger-input::placeholder {
+    color: var(--ledger-color-placeholder);
+  }
+
+  .ledger-input:focus-visible {
+    outline: 2px solid var(--ledger-primary-color-filled);
+    outline-offset: -1px;
+  }
+
+  .ledger-input:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .ledger-input[type="number"] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Select family — a select-only combobox: trigger button + absolutely positioned listbox.
+   * The multiselect shares the trigger and list classes; only the wrapper differs.
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-select,
+  .ledger-multiselect {
+    position: relative;
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    min-width: 0;
+    font-size: var(--ledger-control-font-size);
+  }
+
+  .ledger-select-trigger {
+    display: inline-flex;
+    flex: 1 1 auto;
+    gap: 6px;
+    align-items: center;
+    min-width: 0;
+    height: var(--ledger-control-height);
+    padding-inline: var(--ledger-control-pad-inline);
+    font: inherit;
+    font-size: inherit;
+    color: inherit;
+    text-align: start;
+    cursor: pointer;
+    background-color: var(--ledger-color-body);
+    border: 1px solid var(--ledger-color-default-border);
+    border-radius: var(--ledger-radius-default);
+  }
+
+  .ledger-select-trigger:focus-visible {
+    outline: 2px solid var(--ledger-primary-color-filled);
+    outline-offset: 2px;
+  }
+
+  .ledger-select-trigger:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .ledger-select-value {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ledger-select-trigger[data-placeholder] .ledger-select-value {
+    color: var(--ledger-color-placeholder);
+  }
+
+  .ledger-select-chevron {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    color: var(--ledger-color-dimmed);
+    transition: rotate 150ms ease;
+  }
+
+  .ledger-select-trigger[aria-expanded="true"] .ledger-select-chevron {
+    rotate: 180deg;
+  }
+
+  .ledger-select-list {
+    position: absolute;
+    inset-inline-start: 0;
+    inset-block-start: calc(100% + 4px);
+    z-index: var(--ledger-z-index-popover);
+    min-width: 100%;
+    max-height: 280px;
+    padding-block: 4px;
+    overflow-y: auto;
+    background-color: var(--ledger-color-body);
+    border: 1px solid var(--ledger-color-default-border);
+    border-radius: var(--ledger-radius-default);
+    box-shadow: var(--ledger-shadow-md);
+  }
+
+  .ledger-select-group {
+    padding: 6px var(--ledger-control-pad-inline) 2px;
+    font-size: var(--ledger-font-size-xs);
+    font-weight: 500;
+    color: var(--ledger-color-dimmed);
+  }
+
+  .ledger-select-option {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-height: 28px;
+    padding: 4px var(--ledger-control-pad-inline);
+    font-size: var(--ledger-control-font-size);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .ledger-select-option[data-active] {
+    background-color: var(--ledger-color-gray-light);
+  }
+
+  .ledger-select-option[data-selected] {
+    font-weight: 500;
+    color: var(--ledger-primary-color-filled);
+  }
+
+  .ledger-select-option[aria-disabled] {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Popover — the anchor is a thin inline wrapper; the panel is teleported to the body and
+   * positioned fixed from the trigger rect (inline style), so only its surface lives here.
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-popover {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .ledger-popover-panel {
+    z-index: var(--ledger-z-index-popover);
+    padding: 8px;
+    background-color: var(--ledger-color-body);
+    border: 1px solid var(--ledger-color-default-border);
+    border-radius: var(--ledger-radius-default);
+    box-shadow: var(--ledger-shadow-md);
+  }
+
+  .ledger-popover-panel:focus {
+    outline: none;
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Spinner
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-spinner {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    vertical-align: -0.125em;
+    border: 2px solid var(--ledger-color-default-border);
+    border-block-start-color: var(--ledger-primary-color-filled);
+    border-radius: 50%;
+    animation: ledger-spinner-spin 600ms linear infinite;
+  }
+
+  @keyframes ledger-spinner-spin {
+    to {
+      rotate: 360deg;
+    }
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Search — the shell carries the input chrome; the input inside is bare.
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-search {
+    position: relative;
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    height: var(--ledger-control-height);
+    min-width: 0;
+    padding-inline: var(--ledger-control-pad-inline);
+    font-size: var(--ledger-control-font-size);
+    background-color: var(--ledger-color-body);
+    border: 1px solid var(--ledger-color-default-border);
+    border-radius: var(--ledger-radius-default);
+  }
+
+  .ledger-search:focus-within {
+    outline: 2px solid var(--ledger-primary-color-filled);
+    outline-offset: -1px;
+  }
+
+  .ledger-search-icon {
+    display: inline-flex;
+    flex: none;
+    color: var(--ledger-color-dimmed);
+  }
+
+  .ledger-search .ledger-input {
+    flex: 1 1 auto;
+    height: 100%;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .ledger-search .ledger-input:focus-visible {
+    outline: none;
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Pagination bar — summary on the start, rows-per-page and the pager on the end. The base
+   * .ledger-pagination-bar rules earlier in the file own its seat and seams; this is the row.
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-pagination-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ledger-spacing-md);
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .ledger-pagination-summary {
+    font-size: var(--ledger-text-size);
+    color: var(--ledger-color-dimmed);
+  }
+
+  .ledger-pagination-side {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--ledger-spacing-md);
+    align-items: center;
+  }
+
+  .ledger-pagination-group {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--ledger-spacing-xs);
+    align-items: center;
+  }
+
+  .ledger-pagination-caption {
+    font-size: var(--ledger-text-size);
+    color: var(--ledger-color-dimmed);
+    white-space: nowrap;
+  }
+
+  .ledger-pagination-pages {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .ledger-pagination-edge {
+    padding-inline: 6px;
+  }
+
+  .ledger-pagination-page {
+    min-width: var(--ledger-control-height);
+    padding-inline: 4px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ledger-pagination-dots {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--ledger-control-height);
+    color: var(--ledger-color-dimmed);
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Selection bar count (the bar's own seat and padding are the earlier rules).
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-selection-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--ledger-spacing-sm);
+    align-items: center;
+  }
+
+  .ledger-selection-count {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Columns panel — the layout the former Mantine Group/Stack wrappers provided, completing the
+   * earlier panel rules (same selectors, later source order). The checkbox row is identity; the
+   * toolbar reveals on hover/focus per the earlier rules.
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-columns-panel-header {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--ledger-spacing-xs);
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .ledger-columns-panel-title {
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .ledger-columns-panel-item {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .ledger-columns-panel-item > .ledger-columns-panel-label {
+    flex: 1 1 auto;
+  }
+
+  .ledger-columns-panel-grip {
+    display: inline-flex;
+    flex: none;
+  }
+
+  .ledger-columns-panel-width-mark {
+    font-size: var(--ledger-font-size-xs);
+    line-height: 1;
+  }
+
+  .ledger-columns-panel-segmented {
+    display: inline-flex;
+    flex: none;
+    gap: 2px;
+    padding: 2px;
+    background-color: var(--ledger-color-gray-light);
+    border-radius: var(--ledger-radius-default);
+  }
+
+  .ledger-columns-panel-segment.ledger-button {
+    height: 24px;
+    padding-inline: 5px;
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Filter popover — the funnel wrapper in the header actions and the panel's inner stack.
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-filter-popover {
+    display: inline-flex;
+  }
+
+  .ledger-filter-popover-trigger {
+    display: inline-flex;
+  }
+
+  .ledger-filter-popover-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ledger-filter-popover-row {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .ledger-filter-popover-footer {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .ledger-filter-text {
+    position: relative;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+    align-items: center;
+    min-width: 0;
+  }
+
+  .ledger-filter-text .ledger-input {
+    flex: 1 1 auto;
+  }
+
+  .ledger-filter-dates {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ledger-filter-dates .ledger-input {
+    min-width: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ledger-select-chevron {
+      transition: none;
+    }
+  }
+}
