@@ -5,7 +5,6 @@ import type { DataTableElementProps } from "./element-props";
 import type { DataTableIcons } from "./icons";
 import type { DataTableLabels } from "./labels";
 import type { LedgerSize } from "./size";
-import type { RowReorderKeyboard } from "./row-reorder";
 import type { LedgerTrProps, HeaderGroup, Row } from "./types";
 import type { LedgerExpansionController, LedgerSelectionController } from "./use-row-commands";
 
@@ -26,11 +25,10 @@ import { inject, provide } from "vue";
 
 /**
  * The keyboard half of a row drag (docs/rows.md#row-ordering) — the handle cells drive it,
- * `<DataTable>` owns the session.
+ * `<DataTable>` owns the session. The full shape is row-reorder's `RowReorderKeyboard`
+ * (re-exported here): `{ onKeyDown }` is the structural contract the context carries.
  */
-export interface RowReorderKeyboard {
-  onKeyDown: (event: KeyboardEvent) => void;
-}
+export type { RowReorderKeyboard } from "./row-reorder";
 
 export interface DataTableContextValue {
   /**
