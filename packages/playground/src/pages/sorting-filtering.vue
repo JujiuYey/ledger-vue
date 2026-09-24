@@ -2,8 +2,9 @@
 import { computed, ref } from "vue";
 
 import {
-  createColumnHelper,
+  DataTable,
   DataTableSearch,
+  createColumnHelper,
   useDataTable
 } from "@coldsmirk/ledger-vue";
 import type { ColumnFiltersState, SortingState } from "@coldsmirk/ledger-vue";

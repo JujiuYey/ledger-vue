@@ -2,8 +2,9 @@
 import { computed, ref } from "vue";
 
 import {
-  createColumnHelper,
+  DataTable,
   DataTableColumnsPanel,
+  createColumnHelper,
   useDataTable
 } from "@coldsmirk/ledger-vue";
 
