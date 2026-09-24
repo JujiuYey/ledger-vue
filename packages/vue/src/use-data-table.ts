@@ -94,7 +94,6 @@ export function useDataTable<TData extends RowData>(options: UseDataTableOptions
     sortingMode = "client",
     filterMode = "client",
     paginationMode = "client",
-    rowCount,
     editTrigger = "double-click",
     editMode = "cell",
     onEditCommit,
@@ -559,7 +558,7 @@ export function useDataTable<TData extends RowData>(options: UseDataTableOptions
     manualSorting,
     manualFiltering,
     manualPagination: bypassPaginatedRowModel,
-    ...serverPagination && rowCount !== undefined && { rowCount },
+    ...serverPagination && options.rowCount !== undefined && { rowCount: computed(() => toValue(options.rowCount)) },
     ...serverPagination && {
       autoResetAll: undefined,
       autoResetExpanded: tableOptions?.autoResetAll ?? tableOptions?.autoResetExpanded,

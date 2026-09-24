@@ -379,9 +379,10 @@ export interface UseDataTableOptions<TData extends RowData> {
   filterMode?: "client" | "server";
   paginationMode?: "client" | "server";
   /**
-   * Server-mode total row count; `pageCount` is derived internally.
+   * Server-mode total row count; `pageCount` is derived internally. Accepts a ref/getter so a
+   * server table whose total changes after a fetch moves the pager.
    */
-  rowCount?: number;
+  rowCount?: ReactiveInput<number>;
 
   /* Editing */
   editTrigger?: DataTableEditTrigger;

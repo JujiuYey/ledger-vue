@@ -150,6 +150,7 @@ export type {
 } from "./types";
 export type { Cell, Column, ColumnDef, Header, HeaderGroup, Row } from "./types";
 export { useDataTable } from "./use-data-table";
+export type { LedgerSize, SizeScale } from "./size";
 
 export { flexRender } from "@tanstack/vue-table";
 export type {
