@@ -1,0 +1,210 @@
+/*
+ * Playground chrome — deliberately plain CSS, no framework. The table itself is styled by
+ * the library's own stylesheet (imported in App.vue).
+ */
+
+:root {
+  --pg-bg: #f8f9fa;
+  --pg-panel: #ffffff;
+  --pg-border: #dee2e6;
+  --pg-text: #212529;
+  --pg-dimmed: #74797f;
+  --pg-accent: #228be6;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pg-bg: #131417;
+    --pg-panel: #1a1b1e;
+    --pg-border: #373a40;
+    --pg-text: #e9ecef;
+    --pg-dimmed: #909296;
+    --pg-accent: #4dabf7;
+  }
+}
+
+:root[data-theme="dark"] {
+  --pg-bg: #131417;
+  --pg-panel: #1a1b1e;
+  --pg-border: #373a40;
+  --pg-text: #e9ecef;
+  --pg-dimmed: #909296;
+  --pg-accent: #4dabf7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: -apple-system, "Segoe UI", "Noto Sans", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  color: var(--pg-text);
+  background: var(--pg-bg);
+}
+
+.pg-shell {
+  display: flex;
+  height: 100%;
+}
+
+.pg-sidebar {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+  width: 240px;
+  padding: 20px 14px;
+  overflow-y: auto;
+  background: var(--pg-panel);
+  border-inline-end: 1px solid var(--pg-border);
+}
+
+.pg-brand {
+  padding: 0 8px 12px;
+}
+
+.pg-brand-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.pg-brand-subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pg-dimmed);
+}
+
+.pg-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pg-nav-item {
+  padding: 7px 10px;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  text-decoration: none;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  border-radius: 6px;
+}
+
+.pg-nav-item:hover {
+  background: rgb(0 0 0 / 5%);
+}
+
+.pg-nav-item[data-active] {
+  font-weight: 600;
+  color: var(--pg-accent);
+  background: color-mix(in srgb, var(--pg-accent) 12%, transparent);
+}
+
+.pg-chrome {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--pg-border);
+}
+
+.pg-chrome button {
+  flex: 1;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 12px;
+  color: inherit;
+  cursor: pointer;
+  background: none;
+  border: 1px solid var(--pg-border);
+  border-radius: 6px;
+}
+
+.pg-chrome button:hover {
+  background: rgb(0 0 0 / 5%);
+}
+
+.pg-main {
+  flex: 1;
+  min-width: 0;
+  padding: 24px 28px;
+  overflow-y: auto;
+}
+
+.pg-page {
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.pg-page-title {
+  margin: 0 0 4px;
+  font-size: 22px;
+}
+
+.pg-page-description {
+  margin: 0 0 20px;
+  color: var(--pg-dimmed);
+}
+
+.pg-demo {
+  padding: 16px;
+  background: var(--pg-panel);
+  border: 1px solid var(--pg-border);
+  border-radius: 10px;
+}
+
+.pg-demo + .pg-demo {
+  margin-block-start: 20px;
+}
+
+.pg-demo-caption {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pg-table-wrap {
+  height: 420px;
+}
+
+.pg-table-wrap.tall {
+  height: 620px;
+}
+
+.pg-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.pg-note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--pg-dimmed);
+}
+
+.pg-output {
+  margin: 12px 0 0;
+  padding: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  background: rgb(0 0 0 / 4%);
+  border-radius: 6px;
+}
