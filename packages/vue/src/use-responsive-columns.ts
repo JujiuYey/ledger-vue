@@ -1,0 +1,151 @@
+import type { RowData } from "@tanstack/vue-table";
+import type { ComputedRef } from "vue";
+
+import type { ColumnDef, ReactiveInput } from "./types";
+
+/**
+ * Breakpoint-driven column presence (`meta.hiddenFrom` / `meta.visibleFrom`, the host's own
+ * `Box` vocabulary): a hidden column is removed from the definitions before TanStack sees
+ * them, so the width engine, the colgroup, and the columns panel all follow — column state
+ * keyed by id (`columnVisibility`, persistence) is untouched and reapplies when the column
+ * returns.
+ *
+ * Breakpoint values resolve from a local map of the host's published px scale — no theme-context
+ * dependency, so hook mode works wherever `useDataTable` does. Without `matchMedia` (SSR, jsdom)
+ * every column stays visible.
+ */
+import { computed, ref, toValue, watch } from "vue";
+
+const STOCK_BREAKPOINTS: Record<string, string> = {
+  xs: "576px",
+  sm: "768px",
+  md: "992px",
+  lg: "1200px",
+  xl: "1400px"
+};
+
+function breakpointValue(breakpoint: string): string {
+  return STOCK_BREAKPOINTS[breakpoint] ?? breakpoint;
+}
+
+function collectBreakpoints<TData extends RowData>(columns: Array<ColumnDef<TData, any>>, into: Set<string>): void {
+  for (const column of columns) {
+    if ("columns" in column && Array.isArray(column.columns)) {
+      collectBreakpoints(column.columns, into);
+      continue;
+    }
+
+    if (column.meta?.hiddenFrom) {
+      into.add(column.meta.hiddenFrom);
+    }
+
+    if (column.meta?.visibleFrom) {
+      into.add(column.meta.visibleFrom);
+    }
+  }
+}
+
+function filterColumns<TData extends RowData>(
+  columns: Array<ColumnDef<TData, any>>,
+  matches: Record<string, boolean>
+): Array<ColumnDef<TData, any>> {
+  const result: Array<ColumnDef<TData, any>> = [];
+
+  for (const column of columns) {
+    if ("columns" in column && Array.isArray(column.columns)) {
+      const children = filterColumns(column.columns, matches);
+
+      // A group whose every child is off-breakpoint disappears with them.
+      if (children.length > 0) {
+        result.push(children === column.columns
+          ? column
+          // The ledger alias re-attaches `enableResizing`, which the group's TanStack-typed
+          // `columns` slot does not carry — the assertion re-enters the alias.
+          : { ...column, columns: children } as ColumnDef<TData, any>);
+      }
+
+      continue;
+    }
+
+    const { hiddenFrom, visibleFrom } = column.meta ?? {};
+
+    // Host semantics: hiddenFrom hides AT AND ABOVE the breakpoint, visibleFrom shows only
+    // there. An unknown match (no matchMedia) resolves to visible.
+    if (hiddenFrom && matches[hiddenFrom] === true) {
+      continue;
+    }
+
+    if (visibleFrom && matches[visibleFrom] === false) {
+      continue;
+    }
+
+    result.push(column);
+  }
+
+  return result;
+}
+
+export function useResponsiveColumns<TData extends RowData>(
+  columns: ReactiveInput<Array<ColumnDef<TData, any>>>
+): ComputedRef<Array<ColumnDef<TData, any>>> {
+  // Serialized, not joined: a breakpoint is any CSS length the author writes, and the ones with
+  // commas in them are ordinary (`clamp(30em, 50vw, 60em)`). A separator inside a value would
+  // split one breakpoint into several nonsense media queries, none of which ever match.
+  const breakpointsKey = computed(() => {
+    const used = new Set<string>();
+    collectBreakpoints(toValue(columns), used);
+
+    return used.size === 0 ? "" : JSON.stringify([...used].sort());
+  });
+
+  const matches = ref<Record<string, boolean>>({});
+
+  watch(breakpointsKey, (key, _previous, onCleanup) => {
+    if (key === "" || typeof matchMedia !== "function") {
+      matches.value = Object.keys(matches.value).length === 0 ? matches.value : {};
+
+      return;
+    }
+
+    const queries = (JSON.parse(key) as string[]).map(breakpoint => {
+      const query = matchMedia(`(min-width: ${breakpointValue(breakpoint)})`);
+      const apply = () => {
+        const next = query.matches;
+
+        if (matches.value[breakpoint] !== next) {
+          matches.value = { ...matches.value, [breakpoint]: next };
+        }
+      };
+
+      apply();
+      query.addEventListener("change", apply);
+
+      return { query, apply };
+    });
+
+    // The counterpart of the React effect cleanup: listeners re-arm when the breakpoint set
+    // moves, and the watch's own disposal takes them down on unmount.
+    onCleanup(() => {
+      for (const { query, apply } of queries) {
+        query.removeEventListener("change", apply);
+      }
+    });
+  }, { immediate: true });
+
+  const responsiveColumns = computed(() => {
+    const definitions = toValue(columns);
+
+    if (breakpointsKey.value === "") {
+      return definitions;
+    }
+
+    const filtered = filterColumns(definitions, matches.value);
+
+    // Identity-preserving when nothing is filtered out, so downstream memos stay cold.
+    return filtered.length === definitions.length && filtered.every((column, index) => column === definitions[index])
+      ? definitions
+      : filtered;
+  });
+
+  return responsiveColumns;
+}
