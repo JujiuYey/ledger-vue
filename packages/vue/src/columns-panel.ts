@@ -211,7 +211,8 @@ export const DataTableColumnsPanel = defineComponent({
   }
 });
 
-interface ColumnsPanelContentProps<TData extends RowData> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- documented prop shape of the content component
+export interface ColumnsPanelContentProps<TData extends RowData> {
   table: TableInstance<TData>;
   labels: DataTableLabels;
   icons: DataTableIcons;
@@ -357,7 +358,8 @@ function zoneCaption(zone: keyof typeof zoneCaptions, labels: DataTableLabels, i
   return h("div", { class: "ledger-columns-panel-zone-label" }, [h(Glyph, { size: 12 }), labels[caption.label]]);
 }
 
-interface ColumnsPanelItemProps<TData extends RowData> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- documented prop shape of the item component
+export interface ColumnsPanelItemProps<TData extends RowData> {
   column: Column<TData, unknown>;
   table: TableInstance<TData>;
   labels: DataTableLabels;

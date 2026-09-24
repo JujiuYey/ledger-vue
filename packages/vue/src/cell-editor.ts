@@ -6,7 +6,7 @@ import { columnHeaderText } from "./build-columns";
 import { LedgerSpinner } from "./controls";
 import { useDataTableContext } from "./context";
 import { cellValue, normalizeEdit } from "./edit-meta";
-import { getStyles } from "./get-styles";
+import { useGetStyles } from "./get-styles";
 import { SIZES } from "./size";
 
 export { canEditCell } from "./edit-meta";
@@ -184,7 +184,7 @@ export const CellEditor = defineComponent({
           onDblclick: (event: MouseEvent) => event.stopPropagation(),
           onKeydown: handleKeyDown,
           ref: hostRef,
-          ...getStyles("cellEditor")
+          ...useGetStyles()("cellEditor")
         },
         [editor, pending ? h(LedgerSpinner, { size: 12 }) : null]
       );
@@ -358,7 +358,7 @@ export const RowCellEditor = defineComponent({
           onDblclick: (event: MouseEvent) => event.stopPropagation(),
           onKeydown: handleKeyDown,
           ref: containerRef,
-          ...getStyles("cellEditor")
+          ...useGetStyles()("cellEditor")
         },
         [editor, pending ? h(LedgerSpinner, { size: 12 }) : null]
       );

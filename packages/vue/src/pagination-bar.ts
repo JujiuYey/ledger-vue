@@ -28,7 +28,7 @@ const IconChevronRight = svgGlyph(() => [h("path", { d: "m9 18 6-6-6-6" })]);
 const IconChevronsLeft = svgGlyph(() => [h("path", { d: "m11 17-5-5 5-5" }), h("path", { d: "m18 17-5-5 5-5" })]);
 const IconChevronsRight = svgGlyph(() => [h("path", { d: "m6 17 5-5-5-5" }), h("path", { d: "m13 17 5-5-5-5" })]);
 
-interface PaginationBarCoreProps<TData extends RowData> {
+export interface PaginationBarCoreProps<TData extends RowData> {
   table: TableInstance<TData>;
   labels: DataTableLabels;
   pageSizeOptions: number[];
@@ -61,7 +61,7 @@ const PaginationBarCore = defineComponent({
     // from its options renders blank. Always de-duplicated and ascending, so the list a reader
     // sees does not depend on how the current size got there.
     const sizeOptions = computed(() =>
-      [...new Set([...props.pageSizeOptions, pagination.value.pageSize])].toSorted((left, right) => left - right)
+      [...new Set([...props.pageSizeOptions, pagination.value.pageSize])].sort((left: number, right: number) => left - right)
     );
 
     return () => {

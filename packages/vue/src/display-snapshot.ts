@@ -1,4 +1,6 @@
-import type { Column, Row, RowData } from "./types";
+import type { RowData } from "@tanstack/vue-table";
+
+import type { Column, Row } from "./types";
 
 import { buildDisplayRows } from "./table-body";
 

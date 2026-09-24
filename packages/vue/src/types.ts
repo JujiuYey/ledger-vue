@@ -42,6 +42,7 @@ import type {
 import type { HTMLAttributes, MaybeRefOrGetter, TdHTMLAttributes, ThHTMLAttributes, VNodeChild } from "vue";
 
 import type { DataTableElementProps } from "./element-props";
+import type { LedgerSize } from "./size";
 import type { LedgerFeatures } from "./ledger-features";
 
 /**
@@ -710,9 +711,9 @@ export interface LedgerInstantEditingController {
  * Element prop types the `meta.*Props` surfaces and row props resolve to — Vue's own
  * HTMLAttributes families.
  */
-export type LedgerTdProps = TdHTMLAttributes<HTMLTableCellElement>;
-export type LedgerThProps = ThHTMLAttributes<HTMLTableCellElement>;
-export type LedgerTrProps = HTMLAttributes<HTMLTableRowElement>;
+export type LedgerTdProps = TdHTMLAttributes;
+export type LedgerThProps = ThHTMLAttributes;
+export type LedgerTrProps = HTMLAttributes;
 
 export interface LedgerMeta<TData extends RowData> {
   /**

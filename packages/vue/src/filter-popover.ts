@@ -90,7 +90,7 @@ export const FilterPopover = defineComponent({
         {
           // The funnel stopPropagation's the click so it never reaches a handler on the header
           // cell around it; the popover toggles from this handler, not the anchor's.
-          default: ({ toggle }) =>
+          default: ({ toggle }: { toggle: () => void }) =>
             h(
               "div",
               {
@@ -114,7 +114,7 @@ export const FilterPopover = defineComponent({
   }
 });
 
-interface VariantFilterControlProps<TData extends RowData> {
+export interface VariantFilterControlProps<TData extends RowData> {
   column: Column<TData, unknown>;
   config: DataTableFilterConfig;
   filterMode: "client" | "server";
@@ -438,5 +438,5 @@ function facetedOptions(column: Column<any, unknown>): string[] {
     }
   }
 
-  return [...new Set(values)].toSorted().slice(0, FACETED_OPTIONS_CAP);
+  return [...new Set(values)].sort().slice(0, FACETED_OPTIONS_CAP);
 }

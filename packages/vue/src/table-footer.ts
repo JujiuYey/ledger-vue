@@ -9,7 +9,7 @@ import type { ColumnWindowView } from "./use-column-window";
  * declares a `footer`; pinned columns keep their sticky offsets so the totals track their
  * columns.
  */
-import { defineComponent, h } from "vue";
+import { defineComponent, h , type PropType } from "vue";
 import { flexRender } from "@tanstack/vue-table";
 
 import { useDataTableContext } from "./context";
@@ -40,7 +40,7 @@ export const TableFooter = defineComponent({
 
   props: {
     ariaRowIndexStart: { type: Number, default: undefined },
-    columnWindow: { type: Object, default: null },
+    columnWindow: { type: Object as PropType<ColumnWindowView | null>, default: null },
     table: { type: Object, required: true }
   },
 

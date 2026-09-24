@@ -15,6 +15,7 @@ import type { ColumnWindowView } from "./use-column-window";
  * row draws — the render functions below are plain, and the per-cell render host isolates
  * renderer reactivity.
  */
+import type { PropType } from "vue";
 import { computed, defineComponent, h, onUnmounted, ref, toValue, watch, watchEffect } from "vue";
 import { flexRender } from "@tanstack/vue-table";
 import { useVirtualizer } from "@tanstack/vue-virtual";
@@ -261,18 +262,20 @@ export const TableBody = defineComponent({
   name: "LedgerTableBody",
 
   props: {
-    columnWindow: { type: Object, default: null },
-    loadMoreError: { type: [Boolean, Object, String], default: false },
+    columnWindow: { type: Object as PropType<ColumnWindowView | null>, default: null },
+    loadMoreError: { type: [Boolean, Object, String] as PropType<boolean | VueContent>, default: false },
     loading: { type: Boolean, default: false },
     loadingMore: { type: Boolean, default: false },
     onLoadMoreRetry: { type: Function, default: undefined },
     onVirtualizerChange: { type: Function, default: undefined },
-    reorderSourceId: { type: String, default: null },
-    reorderTarget: { type: Object, default: null },
+    reorderSourceId: { type: String as PropType<string | null>, default: null },
+    reorderTarget: { type: Object as PropType<RowReorderTarget | null>, default: null },
     skeletonRowCount: { type: Number, required: true },
     table: { type: Object, required: true },
-    viewportRef: { type: Object, required: true },
-    virtualization: { type: Object, default: null }
+    // The parent template may hand the raw element (top-level template refs auto-unwrap) or
+    // the ref itself — toValue accepts both.
+    viewportRef: { type: [Object] as PropType<HTMLDivElement | null | Ref<HTMLDivElement | null>>, required: true },
+    virtualization: { type: Object as PropType<VirtualizationConfig | null>, default: null }
   },
 
   setup(rawProps) {
@@ -403,7 +406,7 @@ export const TableBody = defineComponent({
       enabled: props.virtualization !== null,
       estimateSize: () => props.virtualization?.estimateHeight ?? DEFAULT_ESTIMATED_ROW_HEIGHT,
       getItemKey: (index: number) => centerDisplayRows.value[index]?.key ?? index,
-      getScrollElement: () => props.viewportRef.value,
+      getScrollElement: () => toValue(props.viewportRef),
       overscan: props.virtualization?.overscan ?? DEFAULT_OVERSCAN
     })));
 
@@ -532,7 +535,7 @@ export const TableBody = defineComponent({
 
       return h("tr", {
         key: displayRow.key,
-        ref: options.measureRef,
+        ref: options.measureRef as never,
         "data-detail-row": true,
         "aria-rowindex": ariaRowIndex,
         "data-dragging": props.reorderSourceId === displayRow.row.id || undefined,
@@ -825,7 +828,7 @@ export const TableBody = defineComponent({
 
       return h("tr", {
         key: displayRow.key,
-        ref: options.measureRef,
+        ref: options.measureRef as never,
         ...mergeElementProps(resolveElementProps(context.rowProps, row), {
           "aria-current": active || undefined,
           "aria-rowindex": ariaRowIndex,

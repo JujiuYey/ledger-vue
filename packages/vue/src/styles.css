@@ -1708,3 +1708,33 @@
     backdrop-filter: blur(1px);
   }
 }
+
+/* Native-button reset for the icon-only controls Mantine's ActionIcon used to carry — the row
+   grip, the expander chevron and the header sort buttons all ride it (integration pass). */
+@layer ledger {
+  .ledger-row-drag-cell button,
+  .ledger-expander-cell button,
+  .ledger-header-cell button[type="button"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    color: inherit;
+    appearance: none;
+    cursor: pointer;
+    background: none;
+    border: 0;
+    border-radius: var(--ledger-radius-default);
+  }
+
+  .ledger-row-drag-cell button:focus-visible,
+  .ledger-expander-cell button:focus-visible {
+    outline: 2px solid var(--ledger-primary-color-filled);
+    outline-offset: -2px;
+  }
+
+  .ledger-row-drag-cell button:hover:not([aria-disabled]),
+  .ledger-expander-cell button:hover {
+    background-color: var(--ledger-color-default-hover);
+  }
+}

@@ -33,12 +33,12 @@ import {
  * is cleared when the creating scope disposes, so a pending write never fires after unmount
  * (the React edition's `flushOnUnmount` semantics inverted: Vue calls cancel explicitly instead).
  */
-export interface Debouncer {
-  run: (...args: unknown[]) => void;
+export interface Debouncer<Args extends unknown[] = unknown[]> {
+  run: (...args: Args) => void;
   cancel: () => void;
 }
 
-export function createDebouncer(fn: (...args: unknown[]) => void, delay: () => number): Debouncer {
+export function createDebouncer<Args extends unknown[]>(fn: (...args: Args) => void, delay: () => number): Debouncer<Args> {
   let timer: ReturnType<typeof setTimeout> | undefined;
 
   const cancel = () => {
@@ -53,7 +53,7 @@ export function createDebouncer(fn: (...args: unknown[]) => void, delay: () => n
   }
 
   return {
-    run: (...args: unknown[]) => {
+    run: (...args: Args) => {
       cancel();
       timer = setTimeout(() => fn(...args), delay());
     },
@@ -343,7 +343,7 @@ export const LedgerSelect = defineComponent({
       let index = activeIndex.value;
       for (let step = 0; step < options.length; step += 1) {
         index = (index + delta + options.length) % options.length;
-        if (!options[index].disabled) {
+        if (!options[index]?.disabled) {
           activeIndex.value = index;
           return;
         }
@@ -394,7 +394,7 @@ export const LedgerSelect = defineComponent({
         case " ": {
           event.preventDefault();
           if (open.value) {
-            pick(resolved.value[activeIndex.value]);
+            pick(resolved.value[activeIndex.value] ?? null);
           } else {
             openList();
           }
@@ -630,10 +630,14 @@ export const LedgerMultiSelect = defineComponent({
         case "Enter":
         case " ":
           event.preventDefault();
-          if (open.value) {
-            toggle(resolved.value[activeIndex.value]);
-          } else {
-            openList();
+          {
+            const option = resolved.value[activeIndex.value];
+
+            if (open.value && option) {
+              toggle(option);
+            } else {
+              openList();
+            }
           }
 
           break;

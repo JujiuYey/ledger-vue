@@ -1,4 +1,5 @@
 import type { VueContent } from "./types";
+import type { VNode } from "vue";
 import { h } from "vue";
 
 import type { DataTableEditRenderer, DataTableInstantEditRenderer } from "./types";
@@ -35,7 +36,7 @@ function editorField(control: VueContent, error: string | null): VueContent {
   ]);
 }
 
-function renderSelectOptions(options: SelectEditorOption[], selectedValue: unknown): VueContent {
+function renderSelectOptions(options: SelectEditorOption[], selectedValue: unknown): VNode[] {
   return options.map(option => {
     if (typeof option === "string") {
       return h("option", { selected: Object.is(String(selectedValue ?? ""), option), value: option }, option);
@@ -152,7 +153,7 @@ export function selectEditor(options: SelectEditorOption[]): DataTableEditRender
         class: "ledger-input",
         "data-size": size,
         disabled: pending || undefined,
-        onChange: event => {
+        onChange: (event: Event) => {
           const next = (event.target as HTMLSelectElement).value;
           setValue(next);
 

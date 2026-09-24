@@ -466,7 +466,7 @@ const centerLeafColumns = computed(() => {
 
   return table.getCenterVisibleLeafColumns();
 });
-const displayColumns = computed<Column<any, unknown>[]>(() => [
+const displayColumns = computed<Column<TData, unknown>[]>(() => [
   ...startLeafColumns.value,
   ...centerLeafColumns.value,
   ...endLeafColumns.value
@@ -485,7 +485,7 @@ const size = computed(() => props.size ?? DEFAULT_SIZE);
 const scale = computed(() => SIZES[size.value]);
 const columnWidthsResult = useColumnWidths(
   erasedTable,
-  visibleLeafColumns,
+  computed(() => visibleLeafColumns.value as unknown as Column<any, unknown>[]),
   viewportRef,
   () => props.tableMinWidth,
   computed(() => scale.value.injectedWidth)
@@ -544,7 +544,7 @@ const columnWindowRange = useColumnWindow({
 const displayIndexById = computed(() =>
   new Map(visibleLeafColumns.value.map((column, index) => [column.id, index] as const)));
 const columnWindow = computed<ColumnWindowView | null>(() => {
-  const range = toValue(columnWindowRange as MaybeRefOrGetter<ReturnType<typeof useColumnWindow>>);
+  const range = columnWindowRange.value;
 
   if (range === null) {
     return null;
@@ -627,13 +627,13 @@ const colgroupSpec = computed<ColSpec[]>(() => {
   const windowValue = columnWindow.value;
 
   if (windowValue === null) {
-    return visibleLeafColumns.value.map(leaf);
+    return visibleLeafColumns.value.map(column => leaf(column as unknown as Column<any, unknown>));
   }
 
   const cols: ColSpec[] = [];
 
   for (const column of visibleLeafColumns.value.slice(0, pinnedStartCount.value)) {
-    cols.push(leaf(column));
+    cols.push(leaf(column as unknown as Column<any, unknown>));
   }
 
   if (windowValue.start > 0) {
@@ -642,7 +642,7 @@ const colgroupSpec = computed<ColSpec[]>(() => {
 
   for (const column of visibleLeafColumns.value
     .slice(pinnedStartCount.value + windowValue.start, pinnedStartCount.value + windowValue.end)) {
-    cols.push(leaf(column));
+    cols.push(leaf(column as unknown as Column<any, unknown>));
   }
 
   if (windowValue.end < windowValue.centerCount) {
@@ -651,7 +651,7 @@ const colgroupSpec = computed<ColSpec[]>(() => {
 
   if (pinnedEndCount.value > 0) {
     for (const column of visibleLeafColumns.value.slice(-pinnedEndCount.value)) {
-      cols.push(leaf(column));
+      cols.push(leaf(column as unknown as Column<any, unknown>));
     }
   }
 
@@ -825,7 +825,7 @@ const logicalDisplayRowCount = computed(() =>
  * a leading display column (a row number, an actions cluster) has no accessor and would leave
  * every announcement nameless.
  */
-const leadingColumn = computed(() =>
+const leadingColumn = computed<Column<TData, unknown> | null>(() =>
   visibleLeafColumns.value.find(column => !isInternalColumn(column.id) && column.accessorFn !== undefined) ?? null);
 
 /**
@@ -1397,7 +1397,7 @@ const reorderSourceId = computed(() => rowOrderingEnabled.value ? rowReorder.sou
 const reorderTarget = computed(() => rowOrderingEnabled.value ? rowReorder.target.value : null);
 
 /* ---- the render context ---- */
-const contextValue: DataTableContextValue = reactive({
+const contextValue = reactive({
   instanceId,
   get labels() {
     return labels.value;
@@ -1457,7 +1457,7 @@ const contextValue: DataTableContextValue = reactive({
   get footerRowProps() {
     return props.footerRowProps as DataTableContextValue["footerRowProps"];
   }
-});
+}) as DataTableContextValue;
 
 provideDataTableContext(contextValue);
 

@@ -37,7 +37,6 @@ import { AutoScroller, Cursor, DragDropManager, PointerActivationConstraints, Po
 import { defineComponent, h, inject, onScopeDispose, provide, ref, Teleport } from "vue";
 import type { InjectionKey, PropType } from "vue";
 
-import type { RowReorderKeyboard as DataTableRowReorderKeyboard } from "./context";
 
 /**
  * The 5px house threshold (use-column-reorder.ts) keeps a plain click from lifting the row —
@@ -63,7 +62,8 @@ export interface RowReorderTarget {
  * single-handler form the DataTable context carries (context.ts): it dispatches the LIVE
  * keyboard session's keys and no-ops while idle, so the context contract stays one method.
  */
-export interface RowReorderKeyboard extends DataTableRowReorderKeyboard {
+export interface RowReorderKeyboard {
+  onKeyDown: (event: KeyboardEvent) => void;
   lift: (rowId: string) => void;
   move: (delta: 1 | -1) => void;
   moveToEdge: (edge: "start" | "end") => void;
@@ -73,6 +73,12 @@ export interface RowReorderKeyboard extends DataTableRowReorderKeyboard {
 }
 
 export interface RowReorderSession<TData extends RowData> {
+  /**
+   * Phantom anchor for the session's data generic — the session itself is row-agnostic (ids in,
+   * ids out), but the composable that owns it is `Row<TData>`-typed and naming that here keeps
+   * the parameter honest without widening the shape.
+   */
+  _rows?: Array<Row<TData>>;
   /**
    * The row a live drag lifted, either channel. Rows render `data-dragging` from it.
    */

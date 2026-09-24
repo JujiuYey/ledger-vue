@@ -321,14 +321,6 @@ export function useDataTable<TData extends RowData>(options: UseDataTableOptions
     expanderColumn
   }));
 
-  // The live half of the gate: while something else controls the visible order, a "reorder"
-  // has no data-order meaning — the handles disable and say why (labels.rowOrderingUnavailable).
-  const rowOrderable = withRowDrag
-    && sorting.value.length === 0
-    && columnFilters.value.length === 0
-    && !globalFilter.value
-    && grouping.value.length === 0;
-
   /* Injected columns are always pinned to the start, invisibly merged over the consumer's slice. */
   const mergedColumnPinning = computed<ColumnPinningState>(() => {
     const internal: string[] = [];

@@ -160,6 +160,13 @@ export interface DataTableBaseProps<TData extends RowData> {
    * A template ref on the component exposes the same object (`defineExpose`).
    */
   handleRef?: Ref<DataTableHandle<TData> | null>;
+  /**
+   * The ARIA table is `main`, not the root — a name left on the root would describe a roleless
+   * wrapper and never reach the table. Routed to the main element, never duplicated.
+   */
+  "aria-label"?: string;
+  "aria-labelledby"?: string;
+  "aria-describedby"?: string;
 }
 
 /**

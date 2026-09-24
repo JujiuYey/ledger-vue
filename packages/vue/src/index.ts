@@ -41,12 +41,8 @@ export { toCsv } from "./csv";
 export type { ToCsvOptions } from "./csv";
 export { DataTable };
 export default DataTable;
-export type {
-  DataTableBaseProps,
-  DataTableCssVariables,
-  DataTableProps,
-  DataTableStylesNames
-} from "./data-table-types";
+export type { DataTableBaseProps, DataTableProps } from "./data-table-types";
+export type { DataTableCssVariables, DataTableStylesNames } from "./get-styles";
 export type { GetStyles, GetStylesOptions, GetStylesProps, GetStylesResult } from "./get-styles";
 export { checkboxEditor, numberEditor, selectEditor, textEditor } from "./editors";
 export type { DataTableElementProps } from "./element-props";

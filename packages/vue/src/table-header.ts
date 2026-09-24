@@ -17,7 +17,7 @@ import type { ColumnWindowView } from "./use-column-window";
  * dropped with the component library — the handle keeps its `aria-hidden` semantics and the
  * hover hint becomes a native `title`.
  */
-import { defineComponent, h, toValue } from "vue";
+import { defineComponent, h, toValue , type PropType } from "vue";
 import { flexRender } from "@tanstack/vue-table";
 
 import { autosizeColumn } from "./autosize-column";
@@ -46,9 +46,9 @@ export const TableHeader = defineComponent({
   name: "LedgerTableHeader",
 
   props: {
-    columnSizing: { type: Object, default: undefined },
-    columnWidths: { type: Object, required: true },
-    columnWindow: { type: Object, default: null },
+    columnSizing: { type: Object as PropType<ColumnSizingState | undefined>, default: undefined },
+    columnWidths: { type: Object as PropType<Record<string, number>>, required: true },
+    columnWindow: { type: Object as PropType<ColumnWindowView | null>, default: null },
     table: { type: Object, required: true }
   },
 
