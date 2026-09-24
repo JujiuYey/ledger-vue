@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { ledgerFilterFns } from "./filter-fns";
 
 function matches(filterFn: FilterFn<any, any>, value: unknown, filterValue: unknown): boolean {
-  const row = { getValue: () => value } as unknown as Row<any>;
+  const row = { getValue: () => value } as unknown as Row<any, any>;
 
   return filterFn(row, "value", filterValue, () => undefined);
 }

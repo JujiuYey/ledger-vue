@@ -97,3 +97,11 @@ keeps the React package's contract verbatim.
 
 MIT — the vendored Lucide path data is ISC (© Lucide Icons contributors; chevron/search/x
 glyphs derived from Feather, MIT © Cole Bemis).
+
+## Known limitations (pre-1.0)
+
+- The four chrome components type their `table` prop as `TableInstance<any>`; v9's invariant
+  `ColumnDef` unions reject concrete instances, so demo pages cast (`as any`). The proper fix
+  is generic component typing — queued for the next design pass.
+- The pagination controls' navigator aria-labels are hardcoded English (parity with the React
+  edition, which inherited them from Mantine's Pagination); they are not yet `labels` keys.

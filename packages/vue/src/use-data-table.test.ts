@@ -1,6 +1,8 @@
 import type { FilterFn, SortingState } from "@tanstack/vue-table";
 
-import type { ColumnDef, TableInstance } from "./types";
+import type { RowData } from "@tanstack/vue-table";
+
+import type { ColumnDef, TableInstance, UseDataTableOptions } from "./types";
 
 import { defineComponent, h, nextTick } from "vue";
 
@@ -82,7 +84,10 @@ const rejectFilter: FilterFn<any, any> = () => false;
  * real setup scope. `act(...)` becomes the call plus a flush — the adapter syncs table options
  * on a pre-flush watcher, and the core mirrors controlled state into its atoms from there.
  */
-function useTableInSetup<TData>(build: () => Parameters<typeof useDataTable>[0]): TableInstance<TData> {
+// The build callback is deliberately untyped: v9's ColumnDef unions are invariant in
+// TData, so a `UseDataTableOptions<Person>` literal is not assignable to the `any`-bound
+// parameter type — the tests' Person columns would all fail. TData stays on the return.
+function useTableInSetup<TData extends RowData>(build: () => UseDataTableOptions<any> | any): TableInstance<TData> {
   let table!: TableInstance<TData>;
 
   const Host = defineComponent({
@@ -105,8 +110,8 @@ async function flush(times = 2): Promise<void> {
 }
 
 /** The instance's live state, read through the reactive atoms. */
-function stateOf(table: TableInstance<any>): Record<string, unknown> {
-  return Object.fromEntries(Object.keys(table.initialState).map(key => [key, table.atoms[key as never].get()]));
+function stateOf(table: any): Record<string, unknown> {
+  return Object.fromEntries(Object.keys(table.initialState).map(key => [key, (table.atoms as Record<string, { get: () => unknown }>)[key]!.get()]));
 }
 
 describe("useDataTable", () => {
@@ -245,7 +250,7 @@ describe("useDataTable", () => {
           meta: { filter: "multi-select" }
         }
       ],
-      getRowId: account => account.id
+      getRowId: (account: any) => account.id
     }));
 
     table.getColumn("state")?.setFilterValue(["active"]);

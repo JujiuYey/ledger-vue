@@ -1,4 +1,4 @@
-import { defineComponent, h, nextTick, ref } from "vue";
+import { h, nextTick, ref } from "vue";
 
 import type { VueWrapper } from "@vue/test-utils";
 import type { ColumnDef, DataTableHandle } from "./types";
@@ -164,13 +164,15 @@ describe("DataTable", () => {
     expect(elementByText("No matching records")).toBeTruthy();
   });
 
-  // Blocked by a product bug (data-table.vue:1326-1328): the ARIA-name props are declared as
-  // "aria-label" / "aria-labelledby" / "aria-describedby" and read back with those hyphenated
-  // keys, but Vue stores declared props under their camelized keys — so `props["aria-label"]`
-  // is always undefined, the name never reaches the `role="table"` element, and (being
-  // declared) it does not even fall through to the root. Pinned from the React suite ("names
-  // the ARIA table itself, leaving the root wrapper anonymous") until fixed.
-  it.todo("names the ARIA table itself, leaving the root wrapper anonymous");
+  it("names the ARIA table itself, leaving the root wrapper anonymous", () => {
+    mountTable({ columns, data: people, getRowId, "aria-label": "People" });
+
+    const main = q('[role="table"]');
+    const root = q(".ledger-root");
+
+    expect(main?.getAttribute("aria-label")).toBe("People");
+    expect(root?.getAttribute("aria-label")).toBeNull();
+  });
 
   it("renders the error panel over stale rows and wires the retry button", async () => {
     const onRetry = vi.fn();
@@ -362,11 +364,23 @@ describe("DataTable", () => {
     expect(onRowClick.mock.calls[0]?.[0]?.original).toEqual(people[0]);
   });
 
-  // Blocked by a product bug (selection.ts:86-92 with 120): the row checkbox's `onClick` falls
-  // through to the `LedgerCheckbox` wrapper <label>, so `event.currentTarget.checked` reads
-  // `undefined` and every click resolves as "deselect" — a row checkbox can never select its
-  // row. Pinned from the React suite ("...but not from the selection checkbox") until fixed.
-  it.todo("never fires onRowClick from the selection checkbox, and the click selects the row");
+  it("never fires onRowClick from the selection checkbox, and the click selects the row", async () => {
+    const onRowClick = vi.fn();
+
+    mountTable({ columns, data: people, enableRowSelection: true, getRowId, onRowClick });
+
+    // The header checkbox is first in the DOM; the first row's checkbox is the next one.
+    const rowCheckbox = all("input[type=\"checkbox\"]")[1];
+    expect(rowCheckbox).toBeTruthy();
+    expect((rowCheckbox as HTMLInputElement | null)?.checked).toBe(false);
+
+    rowCheckbox?.click();
+    await tick();
+
+    expect((rowCheckbox as HTMLInputElement | null)?.checked ?? false).toBe(true);
+    expect(onRowClick).not.toHaveBeenCalled();
+    expect(all(".ledger-row[data-selected]").length).toBe(1);
+  });
 
   it("select-all covers the page and clears back", async () => {
     mountTable({ columns, data: people, enableRowSelection: true, getRowId });
@@ -450,7 +464,7 @@ describe("DataTable", () => {
     expect(radios).toHaveLength(3);
     expect(all("input[type=\"checkbox\"]")).toHaveLength(0);
     // One group, so the platform's own arrow-key navigation applies.
-    expect(new Set(radios.map(radio => radio.name)).size).toBe(1);
+    expect(new Set(radios.map(radio => (radio as HTMLInputElement).name)).size).toBe(1);
 
     await radios[0]?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     await tick();
@@ -469,9 +483,9 @@ describe("DataTable", () => {
       enableRowSelection: true,
       expanderColumn: { maxSize: 60, size: 60 },
       getRowId,
-      renderDetailPanel: row => h("span", `panel:${row.original.name}`),
+      renderDetailPanel: (row: any) => h("span", `panel:${row.original.name}`),
       selectionColumn: {
-        cell: ({ row }) => h("button", { type: "button", onClick: onPick }, `pick ${row.id}`),
+        cell: ({ row }: any) => h("button", { type: "button", onClick: onPick }, `pick ${row.id}`),
         maxSize: 72,
         size: 72
       }
@@ -502,11 +516,11 @@ describe("DataTable", () => {
     expect(onPick).toHaveBeenCalledTimes(1);
   });
 
-  // Blocked by a product bug (data-table.vue:1614): the built-in bar is gated on the raw
-  // `withPaginationBar` prop, whose documented default is true — with `enablePagination` alone
-  // no pagination bar renders. Pinned from the React suite ("renders the pagination bar with
-  // the summary and page-size control") until fixed.
-  it.todo("renders the pagination bar by default under enablePagination");
+  it("renders the pagination bar by default under enablePagination", () => {
+    mountTable({ columns, data: people, enablePagination: true, getRowId });
+
+    expect(q(".ledger-pagination-bar")).toBeTruthy();
+  });
 
   it("never fires onEndReached from an unlaid-out (zero-height) viewport", async () => {
     // Regression: a viewport that has not been laid out reads as distance 0 from the bottom
@@ -613,13 +627,30 @@ describe("DataTable", () => {
     await tick();
   });
 
-  // Blocked by a product bug (cell-editor.ts:52): `const { labels, size } =
-  // useDataTableContext()` destructures the reactive context at setup time, freezing the
-  // editor's `size` (and `labels`) at the values of its first mount — a live size change never
-  // reaches an open editor, and the codebase's own rule for this context ("read its properties
-  // inside the render, never destructure") is violated. The React suite pinned the change
-  // landing ("rerender size lg → the editor hears md"); pinned here until fixed.
-  it.todo("re-sizes an open editor when the table's size prop moves");
+  it("re-sizes an open editor when the table's size prop moves", async () => {
+    const sized: Array<ColumnDef<Person, any>> = [
+      {
+        accessorKey: "name",
+        header: "Name",
+        meta: { edit: { render: context => h("span", { "data-testid": "editor" }, context.size) } }
+      },
+      { accessorKey: "age", header: "Age" }
+    ];
+    // Editing is gated on a commit handler; the size is the subject, so it hears nothing.
+    const onEditCommit = vi.fn();
+    const wrapper = mountTable({ columns: sized, data: people, getRowId, onEditCommit });
+
+    await elementByText("Carol")?.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+    await tick();
+
+    expect(q("[data-testid=\"editor\"]")?.textContent).toBe("xs");
+
+    await wrapper.setProps({ size: "lg" });
+    await tick();
+
+    // The editor hears the CONTROL size — the table's size a step down (size.ts).
+    expect(q("[data-testid=\"editor\"]")?.textContent).toBe("md");
+  });
 
   it("marks the body's last row, and none while a loader row trails the data", async () => {
     const wrapper = mountTable({ columns, data: people, getRowId });
@@ -657,14 +688,22 @@ describe("DataTable", () => {
     expect(Object.hasOwn(root?.dataset ?? {}, "withFooter")).toBe(false);
   });
 
-  // Blocked by a product bug (use-data-table.ts:304): `useResponsiveColumns(options.columns)`
-  // reads the `columns` input once, eagerly — a plain array snapshot. The reactive chain into
-  // `processedColumns` never tracks the input, so a later `columns` prop (or controlled
-  // columns value) never reaches the core: definition swaps, added/removed columns, and the
-  // footer region they would bring are all silently ignored after mount. Pinned from the React
-  // suite ("exposes the closing line and footer presence as root attributes", second half)
-  // until fixed.
-  it.todo("exposes footer presence as a root attribute when a footer-bearing columns value arrives");
+  it("exposes footer presence as a root attribute when a footer-bearing columns value arrives", async () => {
+    const footered: Array<ColumnDef<Person, any>> = [
+      { accessorKey: "name", header: "Name", footer: "Total" },
+      { accessorKey: "age", header: "Age" }
+    ];
+    const wrapper = mountTable({ columns, data: people, getRowId });
+
+    expect(Object.hasOwn(q(".ledger-root")?.dataset ?? {}, "withFooter")).toBe(false);
+
+    await wrapper.setProps({ columns: footered });
+    await tick();
+    await tick();
+
+    expect(Object.hasOwn(q(".ledger-root")?.dataset ?? {}, "withFooter")).toBe(true);
+    expect(q(".ledger-tfoot")).toBeTruthy();
+  });
 
   it("mirrors the body's horizontal scroll onto the header and forwards header wheel", async () => {
     // Regression: a sticky in-scroller header made the vertical scrollbar span (and hide
@@ -779,11 +818,20 @@ describe("DataTable", () => {
     expect(q(".ledger-footer")).toBeNull();
   });
 
-  // Blocked by the columns-snapshot product bug (use-data-table.ts:304): same-id definition
-  // swaps never reach the core, so the new cell renderer never draws (the React suite pinned
-  // exactly this invalidation). Pinned here until fixed — the editing-option halves of the
-  // original are additionally mount-time in the Vue edition (recorded deviation).
-  it.todo("invalidates memoized rows for same-id definitions and editing option changes");
+  it("invalidates memoized rows for same-id definitions", async () => {
+    const first: Array<ColumnDef<Person, any>> = [{ accessorKey: "name", header: "Name" }];
+    const wrapper = mountTable({ columns: first, data: people, getRowId });
+    await tick();
+
+    // Same column ID, new renderer: the cell must redraw.
+    const second: Array<ColumnDef<Person, any>> = [{ accessorKey: "name", header: "Name", cell: context => `${context.getValue()}!` }];
+    await wrapper.setProps({ columns: second });
+    await tick();
+    await tick();
+
+    // The first data row (Carol — the data is unsorted here) draws through the NEW renderer.
+    expect(bodyRows()[0]?.textContent).toContain("Carol!");
+  });
 
   it("invalidates column geometry and rows when delimiter-bearing visible ids change", async () => {
     const collisionColumns: Array<ColumnDef<Person, any>> = [
@@ -856,7 +904,7 @@ describe("DataTable", () => {
       }
     ];
 
-    mountTable({ columns: treeColumns, data: treeData, getRowId: node => node.id, getSubRows: node => node.children });
+    mountTable({ columns: treeColumns, data: treeData, getRowId: (node: any) => node.id, getSubRows: (node: any) => node.children });
 
     // Regression: TanStack's cell.getIsAggregated() is true for ANY row with subRows — a
     // grouping concept leaking into trees — and the aggregated branch swallowed the expander
@@ -885,7 +933,7 @@ describe("DataTable", () => {
       columns,
       data: people,
       getRowId,
-      renderDetailPanel: row => `detail:${row.original.name}`
+      renderDetailPanel: (row: any) => `detail:${row.original.name}`
     });
 
     const expander = q(".ledger-expander-cell button");
@@ -907,7 +955,7 @@ describe("DataTable", () => {
       defaultRowPinning: { bottom: ["3"], top: ["1"] },
       enableRowPinning: true,
       getRowId,
-      renderDetailPanel: row => `detail:${row.original.name}`
+      renderDetailPanel: (row: any) => `detail:${row.original.name}`
     });
 
     const detailFor = (name: string) =>
@@ -937,7 +985,7 @@ describe("DataTable", () => {
       enableRowPinning: true,
       getRowId,
       loadingMore: true,
-      renderDetailPanel: row => `detail:${row.original.name}`,
+      renderDetailPanel: (row: any) => `detail:${row.original.name}`,
       virtualizedRows: true
     });
 

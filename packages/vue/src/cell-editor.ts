@@ -45,7 +45,11 @@ export const CellEditor = defineComponent({
     cell: { type: Object as PropType<Cell<any, unknown>>, required: true }
   },
   setup(props) {
-    const { labels, size } = useDataTableContext();
+    // Live reads: the context is reactive — destructuring here would freeze a setup-time
+    // snapshot, so an open editor would never hear a `size` or labels change.
+    const context = useDataTableContext();
+    const labels = () => context.labels;
+    const size = () => context.size;
     const editing = computed(() => props.cell.getContext().table.options.meta?.ledger?.editing);
     // Projected onto its own computed so the registration watch compares the stable function
     // identity, not `meta.ledger`, which is a fresh object on every reactive tick.
@@ -164,15 +168,15 @@ export const CellEditor = defineComponent({
         pending,
         mode: "cell",
         autoFocus: true,
-        label: labels.editColumn(columnHeaderText(props.cell.column)),
-        size: SIZES[size].control
+        label: labels().editColumn(columnHeaderText(props.cell.column)),
+        size: SIZES[size()].control
       });
 
       return h(
         "div",
         {
           "aria-busy": pending || undefined,
-          "aria-label": pending ? labels.editPending : undefined,
+          "aria-label": pending ? labels().editPending : undefined,
           "data-pending": pending || undefined,
           onBlur: event => {
             // Blur commits — unless focus moved elsewhere inside the editor (e.g. a select option).
@@ -203,7 +207,11 @@ export const RowCellEditor = defineComponent({
     cell: { type: Object as PropType<Cell<any, unknown>>, required: true }
   },
   setup(props) {
-    const { labels, size } = useDataTableContext();
+    // Live reads: the context is reactive — destructuring here would freeze a setup-time
+    // snapshot, so an open editor would never hear a `size` or labels change.
+    const context = useDataTableContext();
+    const labels = () => context.labels;
+    const size = () => context.size;
     const editing = computed(() => props.cell.getContext().table.options.meta?.ledger?.editing);
     const rowApi = computed(() => editing.value?.row ?? null);
     const register = computed(() => rowApi.value?.register ?? null);
@@ -309,7 +317,7 @@ export const RowCellEditor = defineComponent({
         }
       };
 
-      const label = labels.editColumn(columnHeaderText(props.cell.column));
+      const label = labels().editColumn(columnHeaderText(props.cell.column));
 
       const editor
         = normalized.kind === "instant"
@@ -328,7 +336,7 @@ export const RowCellEditor = defineComponent({
               error: editError,
               pending,
               label,
-              size: SIZES[size].control
+              size: SIZES[size()].control
             })
           : normalized.render({
               row: props.cell.row,
@@ -345,14 +353,14 @@ export const RowCellEditor = defineComponent({
               mode: "row",
               autoFocus,
               label,
-              size: SIZES[size].control
+              size: SIZES[size()].control
             });
 
       return h(
         "div",
         {
           "aria-busy": pending || undefined,
-          "aria-label": pending ? labels.editPending : undefined,
+          "aria-label": pending ? labels().editPending : undefined,
           "data-pending": pending || undefined,
           onClick: (event: MouseEvent) => event.stopPropagation(),
           onDblclick: (event: MouseEvent) => event.stopPropagation(),

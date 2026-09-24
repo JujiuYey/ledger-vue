@@ -274,7 +274,7 @@ export const TableBody = defineComponent({
     table: { type: Object, required: true },
     // The parent template may hand the raw element (top-level template refs auto-unwrap) or
     // the ref itself — toValue accepts both.
-    viewportRef: { type: [Object] as PropType<HTMLDivElement | null | Ref<HTMLDivElement | null>>, required: true },
+    viewportRef: { type: [Object] as PropType<HTMLDivElement | null | Ref<HTMLDivElement | null>>, default: null },
     virtualization: { type: Object as PropType<VirtualizationConfig | null>, default: null }
   },
 
@@ -636,7 +636,7 @@ export const TableBody = defineComponent({
         });
 
         if (meta?.truncate) {
-          content = h("span", { "data-truncate": true, onPointerEnter: syncTruncationTitle }, [content]);
+          content = h("span", { "data-truncate": true, onPointerenter: syncTruncationTitle }, [content]);
         }
       }
 

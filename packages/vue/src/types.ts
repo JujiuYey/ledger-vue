@@ -58,6 +58,13 @@ export type VueContent = VNodeChild;
 export type ReactiveInput<T> = MaybeRefOrGetter<T>;
 
 /**
+ * The OPTIONAL reactive keys (state slices, rowCount): the getter/ref forms may resolve to
+ * `undefined` — "not controlled right now" — which `toValue` resolves and `useSlice` reads
+ * as uncontrolled.
+ */
+export type ReactiveInputOption<T> = MaybeRefOrGetter<T | undefined>;
+
+/**
  * TanStack's table instance (the enriched Vue shape: `Subscribe`, reactive `atoms`),
  * feature-bound and renamed so it never collides with anything in consumer imports.
  */
@@ -382,7 +389,7 @@ export interface UseDataTableOptions<TData extends RowData> {
    * Server-mode total row count; `pageCount` is derived internally. Accepts a ref/getter so a
    * server table whose total changes after a fetch moves the pager.
    */
-  rowCount?: ReactiveInput<number>;
+  rowCount?: ReactiveInputOption<number>;
 
   /* Editing */
   editTrigger?: DataTableEditTrigger;
@@ -421,58 +428,58 @@ export interface UseDataTableOptions<TData extends RowData> {
   /* State — one independent trio per slice; callbacks receive resolved values.
    * Every slice value accepts a ref or getter so a composable call stays reactive; the default
    * and handler halves stay plain. `v-model:sorting` on `<DataTable>` lands here as a ref. */
-  sorting?: ReactiveInput<SortingState>;
+  sorting?: ReactiveInputOption<SortingState>;
   defaultSorting?: SortingState;
   onSortingChange?: (value: SortingState) => void;
-  columnFilters?: ReactiveInput<ColumnFiltersState>;
+  columnFilters?: ReactiveInputOption<ColumnFiltersState>;
   defaultColumnFilters?: ColumnFiltersState;
   onColumnFiltersChange?: (value: ColumnFiltersState) => void;
-  globalFilter?: ReactiveInput<string>;
+  globalFilter?: ReactiveInputOption<string>;
   defaultGlobalFilter?: string;
   onGlobalFilterChange?: (value: string) => void;
-  pagination?: ReactiveInput<PaginationState>;
+  pagination?: ReactiveInputOption<PaginationState>;
   defaultPagination?: PaginationState;
   onPaginationChange?: (value: PaginationState) => void;
-  rowSelection?: ReactiveInput<RowSelectionState>;
+  rowSelection?: ReactiveInputOption<RowSelectionState>;
   defaultRowSelection?: RowSelectionState;
   onRowSelectionChange?: (value: RowSelectionState) => void;
-  expanded?: ReactiveInput<ExpandedState>;
+  expanded?: ReactiveInputOption<ExpandedState>;
   defaultExpanded?: ExpandedState;
   onExpandedChange?: (value: ExpandedState) => void;
-  columnVisibility?: ReactiveInput<ColumnVisibilityState>;
+  columnVisibility?: ReactiveInputOption<ColumnVisibilityState>;
   defaultColumnVisibility?: ColumnVisibilityState;
   onColumnVisibilityChange?: (value: ColumnVisibilityState) => void;
-  columnPinning?: ReactiveInput<ColumnPinningState>;
+  columnPinning?: ReactiveInputOption<ColumnPinningState>;
   defaultColumnPinning?: ColumnPinningState;
   onColumnPinningChange?: (value: ColumnPinningState) => void;
-  columnOrder?: ReactiveInput<ColumnOrderState>;
+  columnOrder?: ReactiveInputOption<ColumnOrderState>;
   defaultColumnOrder?: ColumnOrderState;
   onColumnOrderChange?: (value: ColumnOrderState) => void;
-  columnSizing?: ReactiveInput<ColumnSizingState>;
+  columnSizing?: ReactiveInputOption<ColumnSizingState>;
   defaultColumnSizing?: ColumnSizingState;
   onColumnSizingChange?: (value: ColumnSizingState) => void;
-  grouping?: ReactiveInput<GroupingState>;
+  grouping?: ReactiveInputOption<GroupingState>;
   defaultGrouping?: GroupingState;
   onGroupingChange?: (value: GroupingState) => void;
-  rowPinning?: ReactiveInput<RowPinningState>;
+  rowPinning?: ReactiveInputOption<RowPinningState>;
   defaultRowPinning?: RowPinningState;
   onRowPinningChange?: (value: RowPinningState) => void;
   /**
    * Non-TanStack slice (like editing); the value is the active row's id.
    */
-  activeRowId?: ReactiveInput<string | null>;
+  activeRowId?: ReactiveInputOption<string | null>;
   defaultActiveRowId?: string | null;
   onActiveRowIdChange?: (value: string | null) => void;
 
   /**
    * Non-TanStack slice; editing has no meaningful default.
    */
-  editingCell?: ReactiveInput<DataTableEditingCell | null>;
+  editingCell?: ReactiveInputOption<DataTableEditingCell | null>;
   onEditingCellChange?: (value: DataTableEditingCell | null) => void;
   /**
    * Row-mode counterpart of `editingCell` (the editing row's id).
    */
-  editingRowId?: ReactiveInput<string | null>;
+  editingRowId?: ReactiveInputOption<string | null>;
   onEditingRowIdChange?: (value: string | null) => void;
 
   /* Persistence */

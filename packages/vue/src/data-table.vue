@@ -71,6 +71,11 @@ import { columnAfterVar, columnStartVar, columnWidthVar, toPx } from "./utils";
 // compiler's type extraction) and cast to the typed shape. Every key optional: sugar mode and
 // hook mode share the one declaration.
 const props = defineProps({
+  // Hyphenated keys: declared (not fallthrough) so the ARIA name reaches the role="table"
+  // element, and read back under the same keys.
+  "aria-label": { type: null },
+  "aria-labelledby": { type: null },
+  "aria-describedby": { type: null },
   classNames: { type: null },
   styles: { type: null },
   className: { type: null },
@@ -235,12 +240,8 @@ const emit = defineEmits<{
 const table = props.table
   ? props.table
   : useDataTable<TData>({
-      get data() {
-        return props.data!;
-      },
-      get columns() {
-        return props.columns!;
-      },
+      data: () => toValue(props.data!),
+      columns: () => toValue(props.columns!),
       getRowId: props.getRowId,
       enableSorting: props.enableSorting,
       enableMultiSort: props.enableMultiSort,
@@ -265,7 +266,7 @@ const table = props.table
       sortingMode: props.sortingMode,
       filterMode: props.filterMode,
       paginationMode: props.paginationMode,
-      rowCount: props.rowCount,
+      rowCount: () => toValue(props.rowCount),
       editTrigger: props.editTrigger,
       editMode: props.editMode,
       onEditCommit: props.onEditCommit,
@@ -274,120 +275,90 @@ const table = props.table
       enableRowOrdering: props.enableRowOrdering,
       onRowReorder: props.onRowReorder,
       rowDragColumn: props.rowDragColumn,
-      get sorting() {
-        return props.sorting;
-      },
+      sorting: () => toValue(props.sorting),
       defaultSorting: props.defaultSorting,
       onSortingChange: value => {
         emit("update:sorting", value);
         props.onSortingChange?.(value);
       },
-      get columnFilters() {
-        return props.columnFilters;
-      },
+      columnFilters: () => toValue(props.columnFilters),
       defaultColumnFilters: props.defaultColumnFilters,
       onColumnFiltersChange: value => {
         emit("update:columnFilters", value);
         props.onColumnFiltersChange?.(value);
       },
-      get globalFilter() {
-        return props.globalFilter;
-      },
+      globalFilter: () => toValue(props.globalFilter),
       defaultGlobalFilter: props.defaultGlobalFilter,
       onGlobalFilterChange: value => {
         emit("update:globalFilter", value);
         props.onGlobalFilterChange?.(value);
       },
-      get pagination() {
-        return props.pagination;
-      },
+      pagination: () => toValue(props.pagination),
       defaultPagination: props.defaultPagination,
       onPaginationChange: value => {
         emit("update:pagination", value);
         props.onPaginationChange?.(value);
       },
-      get rowSelection() {
-        return props.rowSelection;
-      },
+      rowSelection: () => toValue(props.rowSelection),
       defaultRowSelection: props.defaultRowSelection,
       onRowSelectionChange: value => {
         emit("update:rowSelection", value);
         props.onRowSelectionChange?.(value);
       },
-      get expanded() {
-        return props.expanded;
-      },
+      expanded: () => toValue(props.expanded),
       defaultExpanded: props.defaultExpanded,
       onExpandedChange: value => {
         emit("update:expanded", value);
         props.onExpandedChange?.(value);
       },
-      get columnVisibility() {
-        return props.columnVisibility;
-      },
+      columnVisibility: () => toValue(props.columnVisibility),
       defaultColumnVisibility: props.defaultColumnVisibility,
       onColumnVisibilityChange: value => {
         emit("update:columnVisibility", value);
         props.onColumnVisibilityChange?.(value);
       },
-      get columnPinning() {
-        return props.columnPinning;
-      },
+      columnPinning: () => toValue(props.columnPinning),
       defaultColumnPinning: props.defaultColumnPinning,
       onColumnPinningChange: value => {
         emit("update:columnPinning", value);
         props.onColumnPinningChange?.(value);
       },
-      get columnOrder() {
-        return props.columnOrder;
-      },
+      columnOrder: () => toValue(props.columnOrder),
       defaultColumnOrder: props.defaultColumnOrder,
       onColumnOrderChange: value => {
         emit("update:columnOrder", value);
         props.onColumnOrderChange?.(value);
       },
-      get columnSizing() {
-        return props.columnSizing;
-      },
+      columnSizing: () => toValue(props.columnSizing),
       defaultColumnSizing: props.defaultColumnSizing,
       onColumnSizingChange: value => {
         emit("update:columnSizing", value);
         props.onColumnSizingChange?.(value);
       },
-      get grouping() {
-        return props.grouping;
-      },
+      grouping: () => toValue(props.grouping),
       defaultGrouping: props.defaultGrouping,
       onGroupingChange: value => {
         emit("update:grouping", value);
         props.onGroupingChange?.(value);
       },
-      get rowPinning() {
-        return props.rowPinning;
-      },
+      rowPinning: () => toValue(props.rowPinning),
       defaultRowPinning: props.defaultRowPinning,
       onRowPinningChange: value => {
         emit("update:rowPinning", value);
         props.onRowPinningChange?.(value);
       },
-      get activeRowId() {
-        return props.activeRowId;
-      },
+      activeRowId: () => toValue(props.activeRowId),
       defaultActiveRowId: props.defaultActiveRowId,
       onActiveRowIdChange: value => {
         emit("update:activeRowId", value);
         props.onActiveRowIdChange?.(value);
       },
-      get editingCell() {
-        return props.editingCell;
-      },
+      editingCell: () => toValue(props.editingCell),
       onEditingCellChange: value => {
         emit("update:editingCell", value);
         props.onEditingCellChange?.(value);
       },
-      get editingRowId() {
-        return props.editingRowId;
-      },
+      editingRowId: () => toValue(props.editingRowId),
       onEditingRowIdChange: value => {
         emit("update:editingRowId", value);
         props.onEditingRowIdChange?.(value);
@@ -1318,9 +1289,12 @@ const mainProps = computed(() => ({
   // content is being updated, and the root carries no role for it to qualify.
   "aria-busy": props.loading || undefined,
   "aria-colcount": columnWindow.value === null ? undefined : columnWindow.value.totalLeafCount,
-  "aria-describedby": props["aria-describedby"],
-  "aria-label": props["aria-label"],
-  "aria-labelledby": props["aria-labelledby"],
+  // Vue normalizes declared prop keys to camelCase at runtime ("aria-label" → ariaLabel),
+  // so the reads must use the runtime key even though the declared (type-level) key is the
+  // hyphenated attribute spelling.
+  "aria-describedby": (props as unknown as { ariaDescribedby?: string }).ariaDescribedby,
+  "aria-label": (props as unknown as { ariaLabel?: string }).ariaLabel,
+  "aria-labelledby": (props as unknown as { ariaLabelledby?: string }).ariaLabelledby,
   "aria-rowcount": virtualEnabled.value ? ariaRowCount.value : undefined,
   role: "table" as const,
   ...getStyles("main")
@@ -1606,7 +1580,7 @@ ContentHost.props = ["source"];
       </div>
 
       <PaginationBar
-        v-if="paginationEnabled && props.withPaginationBar"
+        v-if="paginationEnabled && props.withPaginationBar !== false"
         :page-size-options="props.pageSizeOptions ?? DEFAULT_PAGE_SIZE_OPTIONS"
         :table="erasedTable"
       />

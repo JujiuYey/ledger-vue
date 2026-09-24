@@ -142,7 +142,10 @@ export const LedgerCheckbox = defineComponent({
   emits: {
     "update:checked": (_checked: boolean) => true
   },
-  setup(props, { emit, slots }) {
+  // Fallthrough attrs (the selection cells' onClick) belong on the INPUT, not the label:
+  // the handler reads `currentTarget.checked`, which only the input carries.
+  inheritAttrs: false,
+  setup(props, { emit, slots, attrs }) {
     return () =>
       h(
         "label",
@@ -153,6 +156,7 @@ export const LedgerCheckbox = defineComponent({
         },
         [
           h("input", {
+            ...attrs,
             class: "ledger-checkbox-input",
             type: "checkbox",
             checked: props.checked,

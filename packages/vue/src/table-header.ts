@@ -237,7 +237,7 @@ const HeaderCell = defineComponent({
               "data-align": meta?.align,
               ...getStyles("headerLabel")
             }, [
-              h("span", { "data-truncate": true, onPointerEnter: syncTruncationTitle }, [label]),
+              h("span", { "data-truncate": true, onPointerenter: syncTruncationTitle }, [label]),
               h("span", {
                 "data-sorted": sorted || undefined,
                 ...getStyles("sortIndicator")
@@ -253,7 +253,7 @@ const HeaderCell = defineComponent({
               "data-align": meta?.align,
               ...getStyles("headerLabel")
             }, [
-              h("span", { "data-truncate": true, onPointerEnter: syncTruncationTitle }, [label])
+              h("span", { "data-truncate": true, onPointerenter: syncTruncationTitle }, [label])
             ]));
           }
 
