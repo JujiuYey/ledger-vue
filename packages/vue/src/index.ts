@@ -86,6 +86,13 @@ DataTable.ColumnsPanel = DataTableColumnsPanel;
 DataTable.Pagination = DataTablePagination;
 DataTable.SelectionBar = DataTableSelectionBar;
 
+// Ordered by module path, which is what the lint rule sorts on — grouping the exports by concept
+// is not available here, so the concepts are catalogued in the README instead.
+export { DataTableColumnsPanel } from "./columns-panel";
+export type { DataTableColumnsPanelProps } from "./columns-panel";
+export { toCsv } from "./csv";
+
+export type { ToCsvOptions } from "./csv";
 export { DataTable };
 export default DataTable;
 export type { DataTableBaseProps, DataTableProps } from "./data-table-types";
