@@ -242,6 +242,7 @@ const ColumnsPanelContent = defineComponent({
     const zoneIds = (id: ColumnZone) => zones.value.find(zone => zone.id === id)?.columns.map(column => column.id) ?? [];
 
     const manager = new DragDropManager();
+    const listEl = ref<HTMLElement | null>(null);
     const unsubscribeDragStart = manager.monitor.addEventListener("dragstart", event => {
       draggedId.value = event.operation.source ? String(event.operation.source.id) : null;
     });
@@ -269,7 +270,24 @@ const ColumnsPanelContent = defineComponent({
       }
 
       const ids = zone.columns.map(column => column.id);
-      const next = moveId(ids, String(source.id), event.operation.target ? String(event.operation.target.id) : undefined);
+
+      // The drop target is resolved from the POINTER POSITION over the panel's own rows:
+      // operation.target does not resolve reliably here (the panel is teleported to the body,
+      // where dnd-kit's collision shapes repeatedly come up empty), and the drop still has to
+      // land between the rows the user actually pointed at.
+      const position = event.operation.position.current;
+      const rows = [...(listEl.value?.querySelectorAll("[data-column-id]") ?? [])];
+      let targetId: string | null = null;
+
+      for (const row of rows) {
+        if (position.y < row.getBoundingClientRect().bottom) {
+          targetId = row.getAttribute("data-column-id");
+          break;
+        }
+      }
+
+      targetId ??= rows.at(-1)?.getAttribute("data-column-id") ?? null;
+      const next = moveId(ids, String(source.id), targetId ?? undefined);
 
       if (next === ids) {
         return;
@@ -314,7 +332,7 @@ const ColumnsPanelContent = defineComponent({
 
         h(
           "div",
-          { class: "ledger-columns-panel-list" },
+          { ref: listEl, class: "ledger-columns-panel-list" },
           zones.value
             .filter(zone => zone.columns.length > 0)
             .map(zone =>
@@ -382,7 +400,7 @@ const ColumnsPanelItem = defineComponent({
     zone: { type: String as PropType<ColumnZone>, required: true },
     orderable: { type: Boolean, required: true },
     manager: { type: Object as PropType<DragDropManager>, required: true },
-    draggedId: { type: String as PropType<string | null>, required: true }
+    draggedId: { type: String as PropType<string | null>, default: null }
   },
   setup(props) {
     const rootEl = ref<HTMLElement | null>(null);
@@ -492,6 +510,7 @@ const ColumnsPanelItem = defineComponent({
         {
           ref: rootEl,
           class: "ledger-columns-panel-item",
+          "data-column-id": props.column.id,
           "data-dragging": isDragging.value || undefined,
           "data-hidden": !visible.value || undefined
         },
