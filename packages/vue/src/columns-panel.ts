@@ -259,7 +259,18 @@ const ColumnsPanelContent = defineComponent({
     const handleDragEnd = (event: DragEndEvent) => {
       const source = event.operation.source;
 
-      if (event.canceled || !source) {
+      if (!source) {
+        return;
+      }
+
+      // A canceled end is abandoned only when the operation had initialized — an Escape.
+      // dnd-kit ALSO reports canceled for every drop where the drag operation never
+      // initialized (`canceled = !status.initialized` in its pointer sensor), and inside this
+      // teleported panel that is the common case: collision detection comes up empty from
+      // pickup to drop, the operation never initializes, yet the drag itself is real —
+      // dragstart fired, the pointer moved, the sortable previewed the move. Those drops
+      // commit; the target resolves from the pointer position below either way.
+      if (event.canceled && event.operation.status.initialized) {
         return;
       }
 

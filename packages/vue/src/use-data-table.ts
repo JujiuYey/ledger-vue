@@ -584,6 +584,15 @@ export function useDataTable<TData extends RowData>(options: UseDataTableOptions
 
   const table = useTable<LedgerFeatures, TData>({ ...tableOptions, ...managed } as never);
 
+  // vue-table propagates reactive options and the controlled state through watches, and the
+  // first generation of table-core memos can compute against a half-bridged state — observed
+  // live: a column missing from `getVisibleLeafColumns()` while its own `getIsVisible()` is
+  // true, and panel writes no render followed (both self-healing on the next state write).
+  // One synchronous options identity-bounce here invalidates every memo before the first
+  // render reads it, closing the desync window: the memos rebuild against the fully-bridged
+  // state and the render subscriptions bind to live atoms.
+  table.setOptions(previous => ({ ...previous }));
+
   /**
    * What the editing paths and the row commands answer from — the post-flush counterpart of the
    * React edition's insertion effect: after every commit-carrying update, the sessions see this

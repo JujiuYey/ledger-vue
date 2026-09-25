@@ -327,7 +327,9 @@ export function useRowReorder<TData extends RowData>({
       return;
     }
 
-    finish(event.canceled);
+    // Canceled counts only when the drag operation had initialized (an Escape); dnd-kit also
+    // reports canceled for drops whose operation never initialized, and those are real drops.
+    finish(event.canceled && event.operation.status.initialized);
   };
 
   /* ---- keyboard channel (index stepping) ---- */

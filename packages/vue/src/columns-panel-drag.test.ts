@@ -108,7 +108,8 @@ describe("columns panel drag reorder", () => {
     const operation = {
       source: { id: "email" },
       target: null,
-      position: { current: { x: nameRect.x + 10, y: pointerY } }
+      position: { current: { x: nameRect.x + 10, y: pointerY } },
+      status: { initialized: true }
     };
 
     for (const listener of listeners.dragstart ?? []) {
@@ -132,5 +133,91 @@ describe("columns panel drag reorder", () => {
     // and the panel's zone rows follow the new order
     const ids = [...document.querySelectorAll(".ledger-columns-panel-item")].map(el => el.getAttribute("data-column-id"));
     expect(ids.indexOf("email")).toBeLessThan(ids.indexOf("name"));
+  });
+
+  it("commits drops dnd-kit reports as canceled because the operation never initialized", async () => {
+    // Regression (user-reported live): inside the teleported panel, collision detection comes
+    // up empty from pickup to drop, so the drag operation never initializes and dnd-kit's
+    // pointer sensor ends it with canceled = true — while the sortable preview has already
+    // visually moved the row. Those are real drops: the reorder must commit (the drop target
+    // resolves from the pointer position), or the panel appears reordered while the table
+    // never moves. An Escape during an INITIALIZED drag (canceled with status.initialized)
+    // still abandons the reorder.
+    const mod = await import("@dnd-kit/dom");
+    const probe = new mod.DragDropManager();
+    const monitorProto = Object.getPrototypeOf(probe.monitor);
+    const listeners: Record<string, Array<(event: any) => void>> = {};
+    const originalAdd = monitorProto.addEventListener;
+    monitorProto.addEventListener = function (this: unknown, name: string, listener: (event: any) => void, ...rest: unknown[]) {
+      (listeners[name] ??= []).push(listener);
+
+      return (originalAdd as (...args: unknown[]) => unknown).call(this, name, listener, ...rest);
+    };
+
+    const { table } = mountPanel();
+    await nextTick();
+
+    monitorProto.addEventListener = originalAdd;
+
+    const panel = document.querySelector(".ledger-columns-panel") as HTMLElement;
+    const rows = [...panel.querySelectorAll("[data-column-id]")];
+    rows.forEach((row, index) => {
+      const y = index * 36;
+      row.getBoundingClientRect = () => ({ x: 0, y, top: y, bottom: y + 36, left: 0, right: 338, width: 338, height: 36, toJSON: () => ({}) } as DOMRect);
+    });
+    const nameRect = rows.find(row => row.getAttribute("data-column-id") === "name")!.getBoundingClientRect();
+    const operation = {
+      source: { id: "email" },
+      target: null,
+      position: { current: { x: nameRect.x + 10, y: nameRect.y + 18 } },
+      status: { initialized: false }
+    };
+
+    for (const listener of listeners.dragstart ?? []) {
+      listener({ type: "dragstart", operation, canceled: false });
+    }
+    await nextTick();
+
+    // dnd-kit monitor listeners receive the manager as their second argument (the optimistic
+    // sorting plugin's revert path reads it); the probe manager satisfies the contract — the
+    // crafted source carries no sortable data, so the plugin bails before touching it. The
+    // listener type declares only the event, so the call goes through a two-arg signature.
+    const dragEnd = listeners.dragend ?? [];
+    for (const listener of dragEnd) {
+      (listener as unknown as (event: unknown, manager: unknown) => void)(
+        { type: "dragend", operation, canceled: true },
+        probe
+      );
+    }
+    await nextTick();
+    await nextTick();
+
+    const order = table.atoms.columnOrder.get() as string[];
+    expect(order.indexOf("email")).toBeLessThan(order.indexOf("name"));
+
+    // Escape mid-drag: canceled with an initialized operation abandons the reorder.
+    const orderBefore = [...order];
+    const escapeOperation = {
+      source: { id: "name" },
+      target: null,
+      position: { current: { x: nameRect.x + 10, y: nameRect.y + 60 } },
+      status: { initialized: true }
+    };
+
+    for (const listener of listeners.dragstart ?? []) {
+      listener({ type: "dragstart", operation: escapeOperation, canceled: false });
+    }
+    await nextTick();
+
+    for (const listener of dragEnd) {
+      (listener as unknown as (event: unknown, manager: unknown) => void)(
+        { type: "dragend", operation: escapeOperation, canceled: true },
+        probe
+      );
+    }
+    await nextTick();
+    await nextTick();
+
+    expect(table.atoms.columnOrder.get()).toEqual(orderBefore);
   });
 });
