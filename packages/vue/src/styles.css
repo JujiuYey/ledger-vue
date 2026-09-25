@@ -172,8 +172,20 @@
     overflow: hidden;
   }
 
-  /* The one elastic region — the native overflow region hosting the body table. Its bottom seam
-     line is an inset overlay (Borders section), so it needs a positioning context. */
+  /* The positioning anchor around the scroller: an absolutely positioned child of the scroller
+     itself belongs to the scrolled coordinate space and rides up out of view the moment the
+     body scrolls. The floating scrollbars and the bottom seam anchor to this wrapper instead —
+     its box is exactly the scroller's box, minus the scrolling. */
+  .ledger-body {
+    position: relative;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  /* The one elastic region — the native overflow region hosting the body table. */
   .ledger-scroller {
     position: relative;
     flex: 1 1 auto;
@@ -205,8 +217,11 @@
     transition: opacity 150ms ease;
   }
 
-  /* Visibility is JS-owned (data-visible on pointer enter/leave of the scroller) rather than
-     :hover — an unlayered host rule on a scrolled table can silently beat this arm. */
+  /* Two arms on purpose. The CSS :hover arm reveals on pointer presence alone — a stale
+     module graph (hot-reload zombies) must not seal the scroll UI — while [data-visible]
+     (set on scroller pointer enter/leave and during thumb drags) is the JS arm that survives
+     any unlayered host rule that beats a plain :hover chain. */
+  .ledger-body:hover .ledger-scrollbar,
   .ledger-scrollbar[data-visible] {
     opacity: 1;
     pointer-events: auto;
@@ -1016,14 +1031,15 @@
     border-block-end: 1px solid var(--ledger-border-color, var(--ledger-color-default-border));
   }
 
-  /* The body's bottom seam: an inset overlay on the scroller's last pixel — it adds no height
-     and stays put under scroll. It paints as the closing line (`withBottomBorder`, unframed: the
-     frame's own bottom border would stack under it) and, with row borders, as the separator
-     above a footer. z-index 2 = the pinned-cell tier: generated after every cell, so it paints
-     over scrolling pinned cells (their opaque backgrounds would erase the line mid-scroll) while
-     staying under the scrollbars (3). */
-  .ledger-root[data-with-bottom-border]:not([data-with-table-border]) .ledger-scroller::after,
-  .ledger-root[data-with-row-borders][data-with-footer] .ledger-scroller::after {
+  /* The body's bottom seam: an inset overlay on the body wrapper's last pixel — anchoring it to
+     the scroller would place it in the scrolled coordinate space, where it drifts up over the
+     rows mid-scroll. On .ledger-body it adds no height and truly stays put. It paints as the
+     closing line (`withBottomBorder`, unframed: the frame's own bottom border would stack under
+     it) and, with row borders, as the separator above a footer. z-index 2 = the pinned-cell
+     tier: a later sibling of the scroller, so it paints over scrolling pinned cells (their
+     opaque backgrounds would erase the line mid-scroll) while staying under the scrollbars (3). */
+  .ledger-root[data-with-bottom-border]:not([data-with-table-border]) .ledger-body::after,
+  .ledger-root[data-with-row-borders][data-with-footer] .ledger-body::after {
     position: absolute;
     inset-block-end: 0;
     inset-inline: 0;

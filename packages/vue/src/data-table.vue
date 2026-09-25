@@ -1478,6 +1478,11 @@ const scrollerProps = computed(() => {
     }
   );
 });
+
+/* The positioning anchor around the scroller: absolutely positioned children of the scroller
+   itself belong to the scrolled coordinate space — the floating scrollbars (and the bottom
+   seam) ride up out of view the moment the body scrolls. They anchor here instead. */
+const bodyProps = computed(() => getStyles("body"));
 const emptyProps = computed(() => getStyles("empty"));
 
 // A template cannot carry the TypeScript cast, so the node-tailed `error` prop resolves here.
@@ -1647,88 +1652,93 @@ ContentHost.props = ["source"];
           </table>
         </div>
 
-        <div ref="viewportRef" v-bind="scrollerProps">
-          <table v-bind="tableProps">
-            <colgroup>
-              <template v-for="col in colgroupSpec" :key="col.key">
-                <col v-if="col.spacer" data-ledger-spacer :style="{ width: col.width }">
-                <col v-else :style="{ width: col.width }">
-              </template>
-            </colgroup>
+        <div v-bind="bodyProps">
+          <div ref="viewportRef" v-bind="scrollerProps">
+            <table v-bind="tableProps">
+              <colgroup>
+                <template v-for="col in colgroupSpec" :key="col.key">
+                  <col v-if="col.spacer" data-ledger-spacer :style="{ width: col.width }">
+                  <col v-else :style="{ width: col.width }">
+                </template>
+              </colgroup>
 
-            <TableBody
-              :column-window="columnWindow"
-              :load-more-error="props.loadMoreError ?? false"
-              :loading="props.loading === true"
-              :loading-more="props.loadingMore === true"
-              :onLoadMoreRetry="props.onEndReached ? retryLoadMore : undefined"
-              :onVirtualizerChange="handleVirtualizerChange"
-              :reorder-source-id="reorderSourceId"
-              :reorder-target="reorderTarget"
-              :skeleton-row-count="skeletonRowCount"
-              :table="erasedTable"
-              :viewport-ref="viewportRef"
-              :virtualization="virtualization"
-            />
-          </table>
-
-          <div
-            v-if="isEmpty"
-            v-bind="emptyProps"
-            :data-variant="filtersActive ? 'no-results' : 'no-data'"
-            role="status"
-          >
-            <!-- Polite, not assertive: filtering a table down to nothing is worth announcing,
-              but it must not interrupt the typing that caused it. -->
-            <ContentHost v-if="props.emptyState" :source="() => props.emptyState" />
-            <div v-else :style="EMPTY_BLOCK_STYLE">
-              <component
-                :is="filtersActive ? icons.noResults : icons.empty"
-                :size="40"
-                :stroke-width="1.5"
+              <TableBody
+                :column-window="columnWindow"
+                :load-more-error="props.loadMoreError ?? false"
+                :loading="props.loading === true"
+                :loading-more="props.loadingMore === true"
+                :onLoadMoreRetry="props.onEndReached ? retryLoadMore : undefined"
+                :onVirtualizerChange="handleVirtualizerChange"
+                :reorder-source-id="reorderSourceId"
+                :reorder-target="reorderTarget"
+                :skeleton-row-count="skeletonRowCount"
+                :table="erasedTable"
+                :viewport-ref="viewportRef"
+                :virtualization="virtualization"
               />
-              <span :style="EMPTY_TITLE_STYLE">{{ filtersActive ? labels.noResults : labels.empty }}</span>
+            </table>
+
+            <div
+              v-if="isEmpty"
+              v-bind="emptyProps"
+              :data-variant="filtersActive ? 'no-results' : 'no-data'"
+              role="status"
+            >
+              <!-- Polite, not assertive: filtering a table down to nothing is worth announcing,
+                but it must not interrupt the typing that caused it. -->
+              <ContentHost v-if="props.emptyState" :source="() => props.emptyState" />
+              <div v-else :style="EMPTY_BLOCK_STYLE">
+                <component
+                  :is="filtersActive ? icons.noResults : icons.empty"
+                  :size="40"
+                  :stroke-width="1.5"
+                />
+                <span :style="EMPTY_TITLE_STYLE">{{ filtersActive ? labels.noResults : labels.empty }}</span>
+              </div>
+            </div>
+
+            <div
+              v-if="errorActive"
+              v-bind="emptyProps"
+              :data-over-rows="rowsLength > 0 || undefined"
+              data-variant="error"
+              role="alert"
+            >
+              <div :style="EMPTY_BLOCK_STYLE">
+                <component :is="icons.error" :size="40" :stroke-width="1.5" />
+                <span :style="EMPTY_TITLE_STYLE">
+                  <template v-if="props.error === true">{{ labels.error }}</template>
+                  <ContentHost v-else-if="errorContent" :source="() => errorContent" />
+                </span>
+                <LedgerButton v-if="props.onRetry" size="xs" variant="light" @click="props.onRetry()">
+                  <component :is="icons.retry" :size="14" />
+                  {{ labels.retry }}
+                </LedgerButton>
+              </div>
             </div>
           </div>
 
+          <!-- Siblings of the scroller, not children: an absolutely positioned child of the
+            scroller belongs to the scrolled coordinate space and rides out of view on scroll. -->
           <div
-            v-if="errorActive"
-            v-bind="emptyProps"
-            :data-over-rows="rowsLength > 0 || undefined"
-            data-variant="error"
-            role="alert"
+            v-if="xThumbStyle"
+            class="ledger-scrollbar ledger-scrollbar-x"
+            :data-visible="scrollbarsVisible || undefined"
+            :data-dragging="xDragging || undefined"
+            @pointerdown.prevent="onThumbPointerDown($event, 'x')"
           >
-            <div :style="EMPTY_BLOCK_STYLE">
-              <component :is="icons.error" :size="40" :stroke-width="1.5" />
-              <span :style="EMPTY_TITLE_STYLE">
-                <template v-if="props.error === true">{{ labels.error }}</template>
-                <ContentHost v-else-if="errorContent" :source="() => errorContent" />
-              </span>
-              <LedgerButton v-if="props.onRetry" size="xs" variant="light" @click="props.onRetry()">
-                <component :is="icons.retry" :size="14" />
-                {{ labels.retry }}
-              </LedgerButton>
-            </div>
+            <div class="ledger-scrollbar-thumb" :style="xThumbStyle" />
           </div>
-        <div
-        v-if="xThumbStyle"
-        class="ledger-scrollbar ledger-scrollbar-x"
-        :data-visible="scrollbarsVisible || undefined"
-        :data-dragging="xDragging || undefined"
-        @pointerdown.prevent="onThumbPointerDown($event, 'x')"
-      >
-          <div class="ledger-scrollbar-thumb" :style="xThumbStyle" />
-      </div>
-      
-        <div
-        v-if="yThumbStyle"
-        class="ledger-scrollbar ledger-scrollbar-y"
-        :data-visible="scrollbarsVisible || undefined"
-        :data-dragging="yDragging || undefined"
-        @pointerdown.prevent="onThumbPointerDown($event, 'y')"
-      >
-          <div class="ledger-scrollbar-thumb" :style="yThumbStyle" />
-      </div>
+
+          <div
+            v-if="yThumbStyle"
+            class="ledger-scrollbar ledger-scrollbar-y"
+            :data-visible="scrollbarsVisible || undefined"
+            :data-dragging="yDragging || undefined"
+            @pointerdown.prevent="onThumbPointerDown($event, 'y')"
+          >
+            <div class="ledger-scrollbar-thumb" :style="yThumbStyle" />
+          </div>
         </div>
 
         <div v-if="hasFooter" ref="footerViewportRef" v-bind="footerProps">

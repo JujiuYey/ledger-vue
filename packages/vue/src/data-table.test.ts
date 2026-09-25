@@ -739,6 +739,62 @@ describe("DataTable", () => {
     expect(viewport?.scrollLeft).toBe(170);
   });
 
+  it("anchors the floating scrollbars outside the scrolled coordinate space", async () => {
+    // Regression: the bars were absolutely positioned INSIDE .ledger-scroller — a positioned
+    // child of a scroll container belongs to the scrolled contents, so the bars rode up out
+    // of view the moment the body scrolled (correct only at scrollTop 0).
+    mountTable({ columns, data: people, getRowId, tableMinWidth: 2000 });
+
+    const body = q(".ledger-body");
+    const scroller = q(".ledger-scroller") as HTMLDivElement;
+
+    // jsdom lays nothing out — the overflow metrics exist only where the test supplies them.
+    Object.defineProperty(scroller, "scrollWidth", { value: 2000, configurable: true });
+    Object.defineProperty(scroller, "clientWidth", { value: 800, configurable: true });
+    Object.defineProperty(scroller, "scrollHeight", { value: 2000, configurable: true });
+    Object.defineProperty(scroller, "clientHeight", { value: 600, configurable: true });
+
+    await scroller.dispatchEvent(new Event("scroll", { bubbles: true }));
+    await tick();
+
+    const bars = all(".ledger-scrollbar");
+
+    expect(bars.length).toBe(2);
+    for (const bar of bars) {
+      expect(body?.contains(bar)).toBe(true);
+      expect(scroller.contains(bar)).toBe(false);
+    }
+  });
+
+  it("reveals the floating scrollbars on scroller hover", async () => {
+    mountTable({ columns, data: people, getRowId, tableMinWidth: 2000 });
+
+    const scroller = q(".ledger-scroller") as HTMLDivElement;
+
+    Object.defineProperty(scroller, "scrollWidth", { value: 2000, configurable: true });
+    Object.defineProperty(scroller, "clientWidth", { value: 800, configurable: true });
+    Object.defineProperty(scroller, "scrollHeight", { value: 2000, configurable: true });
+    Object.defineProperty(scroller, "clientHeight", { value: 600, configurable: true });
+
+    await scroller.dispatchEvent(new Event("scroll", { bubbles: true }));
+    await tick();
+
+    const bars = all(".ledger-scrollbar");
+    expect(bars.length).toBe(2);
+
+    await scroller.dispatchEvent(new Event("pointerenter"));
+    await tick();
+    for (const bar of bars) {
+      expect(Object.hasOwn(bar.dataset, "visible")).toBe(true);
+    }
+
+    await scroller.dispatchEvent(new Event("pointerleave"));
+    await tick();
+    for (const bar of bars) {
+      expect(Object.hasOwn(bar.dataset, "visible")).toBe(false);
+    }
+  });
+
   it("keeps the colgroup in pinned-aware display order", () => {
     // Regression: header cells and row cells render pinned columns first, but
     // getVisibleLeafColumns ignores pinning — a mid-table pinned column drifted onto its
