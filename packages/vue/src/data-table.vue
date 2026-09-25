@@ -458,6 +458,17 @@ function readScrollMetrics(): void {
 
 const xDragging = ref(false);
 const yDragging = ref(false);
+const scrollerHovered = ref(false);
+
+function onScrollerPointerEnter(): void {
+  scrollerHovered.value = true;
+}
+
+function onScrollerPointerLeave(): void {
+  scrollerHovered.value = false;
+}
+
+const scrollbarsVisible = computed(() => scrollerHovered.value || xDragging.value || yDragging.value);
 
 function onThumbPointerDown(event: PointerEvent, axis: "x" | "y"): void {
   const el = viewportRef.value;
@@ -1455,6 +1466,8 @@ const scrollerProps = computed(() => {
       ...scrollerStyles,
       style: { overscrollBehavior: "none" as const, ...(scrollerStyles.style ?? {}) },
       onScroll: handleScrollPositionChange,
+      onPointerenter: onScrollerPointerEnter,
+      onPointerleave: onScrollerPointerLeave,
       // With the active row on, the body viewport is the keyboard focus stop, and it
       // carries the description of the keyboard model (`rowNavigationHintId`, composed
       // after any the consumer passed). Deliberately unnamed: this div is `generic`, a
@@ -1700,6 +1713,7 @@ ContentHost.props = ["source"];
         <div
         v-if="xThumbStyle"
         class="ledger-scrollbar ledger-scrollbar-x"
+        :data-visible="scrollbarsVisible || undefined"
         :data-dragging="xDragging || undefined"
         @pointerdown.prevent="onThumbPointerDown($event, 'x')"
       >
@@ -1709,6 +1723,7 @@ ContentHost.props = ["source"];
         <div
         v-if="yThumbStyle"
         class="ledger-scrollbar ledger-scrollbar-y"
+        :data-visible="scrollbarsVisible || undefined"
         :data-dragging="yDragging || undefined"
         @pointerdown.prevent="onThumbPointerDown($event, 'y')"
       >

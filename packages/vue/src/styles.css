@@ -205,8 +205,9 @@
     transition: opacity 150ms ease;
   }
 
-  .ledger-scroller:hover .ledger-scrollbar,
-  .ledger-scrollbar[data-dragging] {
+  /* Visibility is JS-owned (data-visible on pointer enter/leave of the scroller) rather than
+     :hover — an unlayered host rule on a scrolled table can silently beat this arm. */
+  .ledger-scrollbar[data-visible] {
     opacity: 1;
     pointer-events: auto;
   }
