@@ -19,7 +19,10 @@
   /* ------------------------------------------------------------------------------------------
    * Design tokens (Vue edition): the palette and metrics the rules below consume. Values
    * follow the classic Mantine default theme so the port is visually drop-in.
+   * Defined on :root as well as .ledger-root: teleported surfaces (popover panels, drawers)
+   * mount outside the table root and still have to resolve every var().
    * ------------------------------------------------------------------------------------------ */
+  :root,
   .ledger-root {
     --ledger-color-body: #ffffff;
     --ledger-color-default-border: #dee2e6;
@@ -45,6 +48,7 @@
   }
 
   @media (prefers-color-scheme: dark) {
+    :root:not([data-color-scheme="light"]),
     .ledger-root:not([data-color-scheme="light"]) {
       --ledger-color-body: #1a1b1e;
       --ledger-color-default-border: #373a40;
@@ -60,6 +64,7 @@
     }
   }
 
+  :root[data-color-scheme="dark"],
   .ledger-root[data-color-scheme="dark"] {
     --ledger-color-body: #1a1b1e;
     --ledger-color-default-border: #373a40;
