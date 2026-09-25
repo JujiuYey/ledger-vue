@@ -5,11 +5,8 @@ import "@coldsmirk/ledger-vue/styles.css";
 
 import "./app.css";
 
-import { provideLanguage, useCopy, useLang, type Copy, type Lang } from "./i18n";
+import { useCopy, useLang, type Copy, type Lang } from "./i18n";
 import SourceDrawer from "./source-drawer.vue";
-
-// The shell owns the language (App.vue ≈ the React edition's App.tsx + LanguageProvider in one).
-provideLanguage();
 
 const en = {
   shell: {
@@ -347,3 +344,4 @@ function selectDemo(id: DemoId): void {
     <SourceDrawer :demo-id="activeId" :opened="sourceOpened" @close="sourceOpened = false" />
   </div>
 </template>
+

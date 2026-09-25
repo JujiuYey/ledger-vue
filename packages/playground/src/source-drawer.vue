@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 
-import { useCopy, useLang } from "../i18n";
-import { demoSources, type SourceFile } from "../source";
+import { useCopy } from "./i18n";
+import { demoSources, type SourceFile } from "./source";
 
 /**
  * The "view source" drawer: the demo's own file plus one level of its local imports, tabs per
@@ -34,7 +34,6 @@ const copy = {
 };
 
 const t = useCopy(copy);
-const { lang } = useLang();
 
 const files = computed<SourceFile[]>(() => demoSources(props.demoId));
 const activeFile = ref(0);

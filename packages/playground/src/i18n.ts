@@ -1,7 +1,7 @@
-import type { InjectionKey, MaybeRefOrGetter } from "vue";
+import type { ComputedRef, InjectionKey, MaybeRefOrGetter } from "vue";
 import type { DataTableLabels } from "@coldsmirk/ledger-vue";
 import type { ShallowRef } from "vue";
-import { inject, provide, ref, toValue, watchEffect } from "vue";
+import { computed, inject, provide, ref, toValue, watchEffect } from "vue";
 
 import { defaultLabels } from "@coldsmirk/ledger-vue";
 import { zhCN } from "@coldsmirk/ledger-vue/locales";
@@ -67,16 +67,12 @@ export function useLang(): LanguageValue {
 }
 
 /**
- * The active side of a copy block. Returns a computed-shaped getter — read `t.value.x` in
- * script and `t.x` in templates (top-level refs unwrap) — so column definitions that depend
+ * The active side of a copy block. Returns a computed — read `t.value.x` in script and
+ * `t.x` in templates (top-level computed refs unwrap) — so column definitions that depend
  * on it re-run when the language flips and no stale header survives the switch.
  */
-export function useCopy<T>(copy: Copy<T>): { readonly value: T } {
-  return {
-    get value() {
-      return copy[lang.value];
-    }
-  };
+export function useCopy<T>(copy: Copy<T>): ComputedRef<T> {
+  return computed(() => copy[lang.value]);
 }
 
 /**
@@ -84,12 +80,8 @@ export function useCopy<T>(copy: Copy<T>): { readonly value: T } {
  * edition's theme `defaultProps` mechanism (there is no component-library theme here, so each
  * demo passes `:labels="labels"` to its tables and compounds).
  */
-export function useLangLabels(): { readonly value: DataTableLabels } {
-  return {
-    get value() {
-      return lang.value === "zh" ? zhCN : defaultLabels;
-    }
-  };
+export function useLangLabels(): ComputedRef<DataTableLabels> {
+  return computed(() => (lang.value === "zh" ? zhCN : defaultLabels));
 }
 
 /**
