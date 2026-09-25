@@ -496,9 +496,12 @@
     opacity: 1;
   }
 
-  .ledger-selection-cell,
-  .ledger-expander-cell,
-  .ledger-row-drag-cell {
+  /* .ledger-table-qualified: this edition's base cell rule (.ledger-table th/td, 0,1,1) sets
+     text-align: start and would otherwise out-rank these (0,1,0) — the selection checkbox and
+     the expander/handle glyphs must stay centered in their cells. */
+  .ledger-table .ledger-selection-cell,
+  .ledger-table .ledger-expander-cell,
+  .ledger-table .ledger-row-drag-cell {
     vertical-align: middle;
     text-align: center;
   }

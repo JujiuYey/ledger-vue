@@ -196,7 +196,9 @@ const ownerName = computed(() => {
       </button>
     </div>
 
-    <!-- No theme defaultProps in the Vue edition: the compound takes the shell's `labels` too. -->
+    <!-- No theme defaultProps in the Vue edition: the compound takes the shell's `labels` too.
+        The `as any`: TableInstance<Person> is not seen assignable to the compound's
+        TableInstance<any> prop — a known variance limitation. -->
     <DataTableSelectionBar v-if="multiple" :labels="labels" :table="table as any">
       <button class="pg-button" type="button" @click="exportSelected">
         {{ t.exportCsv }}
