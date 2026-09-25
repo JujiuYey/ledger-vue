@@ -22,8 +22,7 @@
    * Defined on :root as well as .ledger-root: teleported surfaces (popover panels, drawers)
    * mount outside the table root and still have to resolve every var().
    * ------------------------------------------------------------------------------------------ */
-  :root,
-  .ledger-root {
+  :root {
     --ledger-color-body: #ffffff;
     --ledger-color-default-border: #dee2e6;
     --ledger-color-default-hover: rgb(0 0 0 / 4.5%);
@@ -48,8 +47,10 @@
   }
 
   @media (prefers-color-scheme: dark) {
-    :root:not([data-color-scheme="light"]),
-    .ledger-root:not([data-color-scheme="light"]) {
+    /* html-level only: the overrides reach .ledger-root and teleported panels by INHERITANCE.
+       (A `.ledger-root:not([data-color-scheme=…])` arm would match the root div whenever the
+       attribute lives on <html>, pinning every table to the OS scheme.) */
+    html:not([data-color-scheme="light"]) {
       --ledger-color-body: #1a1b1e;
       --ledger-color-default-border: #373a40;
       --ledger-color-default-hover: rgb(255 255 255 / 6%);
@@ -64,7 +65,8 @@
     }
   }
 
-  :root[data-color-scheme="dark"],
+  html[data-color-scheme="dark"],
+  /* per-instance override: one table forced dark under a light host */
   .ledger-root[data-color-scheme="dark"] {
     --ledger-color-body: #1a1b1e;
     --ledger-color-default-border: #373a40;
@@ -77,6 +79,23 @@
     --ledger-shadow-md:
       0 0.25rem 0.75rem rgb(0 0 0 / 35%),
       0 0.0625rem 0.1875rem rgb(0 0 0 / 25%);
+  }
+
+  /* per-instance override: one table forced light under a dark host — the element's own
+     declaration beats the dark inherited from <html> */
+  .ledger-root[data-color-scheme="light"] {
+    --ledger-color-body: #ffffff;
+    --ledger-color-default-border: #dee2e6;
+    --ledger-color-default-hover: rgb(0 0 0 / 4.5%);
+    --ledger-color-gray-light: #f1f3f5;
+    --ledger-color-placeholder: #adb5bd;
+    --ledger-color-red-light: #fff0f6;
+    --ledger-color-red-light-color: #c2255c;
+    --ledger-primary-color-light: #e7f5ff;
+    --ledger-primary-color-light-hover: #d0ebff;
+    --ledger-shadow-md:
+      0 0.25rem 0.75rem rgb(0 0 0 / 8%),
+      0 0.0625rem 0.1875rem rgb(0 0 0 / 5%);
   }
 
   /* ------------------------------------------------------------------------------------------

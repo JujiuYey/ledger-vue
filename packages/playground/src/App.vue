@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref } from "vue";
+import { computed, defineAsyncComponent, ref, watchEffect } from "vue";
 
 import "@coldsmirk/ledger-vue/styles.css";
 
@@ -13,7 +13,9 @@ const en = {
     title: "ledger playground",
     language: "Language",
     toggleNavigation: "Toggle navigation",
-    viewSource: "View source"
+    viewSource: "View source",
+    dark: "Switch to dark mode",
+    light: "Switch to light mode"
   },
   groups: {
     start: "Getting started",
@@ -114,7 +116,9 @@ const copy: Copy<AppCopy> = {
       title: "ledger playground",
       language: "语言",
       toggleNavigation: "切换导航",
-      viewSource: "查看源码"
+      viewSource: "查看源码",
+      dark: "切换到夜间模式",
+      light: "切换到日间模式"
     },
     groups: {
       start: "入门",
@@ -262,6 +266,38 @@ const activeId = ref<DemoId>("basic");
 const mobileNavOpened = ref(false);
 const sourceOpened = ref(false);
 
+/* Day/night: <html data-color-scheme> is what both the playground chrome and the library
+   tokens read. Default follows the OS; the choice persists. */
+const THEME_KEY = "ledger-playground-theme";
+
+const stored = (() => {
+  try {
+    return localStorage.getItem(THEME_KEY);
+  } catch {
+    return null;
+  }
+})();
+
+const theme = ref<"light" | "dark">(
+  stored === "dark" || stored === "light"
+    ? stored
+    : window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+);
+
+watchEffect(() => {
+  document.documentElement.dataset.colorScheme = theme.value;
+
+  try {
+    localStorage.setItem(THEME_KEY, theme.value);
+  } catch {
+    /* private mode */
+  }
+});
+
+function toggleTheme(): void {
+  theme.value = theme.value === "dark" ? "light" : "dark";
+}
+
 const activeCopy = computed(() => t.value.demos[activeId.value]);
 const activeComponent = computed(() => DEMO_COMPONENTS[activeId.value]);
 
@@ -290,6 +326,22 @@ function selectDemo(id: DemoId): void {
       </button>
 
       <strong class="pg-title">{{ t.shell.title }}</strong>
+
+      <button
+        class="pg-theme-toggle"
+        type="button"
+        :aria-label="theme === 'dark' ? t.shell.light : t.shell.dark"
+        @click="toggleTheme"
+      >
+        <!-- sun (shown in dark) / moon (shown in light), Lucide 24-grid, stroke 2 -->
+        <svg v-if="theme === 'dark'" aria-hidden="true" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="16">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" />
+        </svg>
+        <svg v-else aria-hidden="true" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="16">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+        </svg>
+      </button>
 
       <!-- SegmentedControl counterpart: a radiogroup of two radio inputs. -->
       <div class="pg-lang" role="radiogroup" :aria-label="t.shell.language">

@@ -19,6 +19,20 @@
   --pg-header-offset: 52px;
 }
 
+/* Night scheme: <html data-color-scheme="dark"> — the same attribute the library tokens read,
+   so the shell chrome and the tables flip as one. */
+[data-color-scheme="dark"] {
+  --pg-body: #131417;
+  --pg-panel: #1a1b1e;
+  --pg-border: #373a40;
+  --pg-text: #e9ecef;
+  --pg-dimmed: #909296;
+  --pg-accent: #4dabf7;
+  --pg-accent-light: rgb(77 171 247 / 15%);
+  --pg-hover: rgb(255 255 255 / 6%);
+  --pg-code-bg: #26272b;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -68,6 +82,21 @@ body {
 
 .pg-title {
   font-size: 15px;
+}
+
+.pg-theme-toggle {
+  display: inline-flex;
+  margin-left: auto;
+  padding: 7px;
+  color: var(--pg-text);
+  cursor: pointer;
+  background: none;
+  border: 1px solid var(--pg-border);
+  border-radius: 6px;
+}
+
+.pg-theme-toggle:hover {
+  background: var(--pg-hover);
 }
 
 .pg-lang {
