@@ -41,6 +41,14 @@ import type {
 import { computed, reactive, ref, toValue, useId, watch, watchEffect } from "vue";
 import type { FunctionalComponent } from "vue";
 
+import {
+  ScrollAreaCorner,
+  ScrollAreaRoot,
+  ScrollAreaScrollbar,
+  ScrollAreaThumb,
+  ScrollAreaViewport
+} from "reka-ui";
+
 import { isInternalColumn } from "./build-columns";
 import { LedgerButton, LedgerSpinner } from "./controls";
 import { provideDataTableContext, type DataTableContextValue } from "./context";
@@ -409,153 +417,16 @@ const headerViewportRef = ref<HTMLDivElement | null>(null);
 const footerViewportRef = ref<HTMLDivElement | null>(null);
 
 /**
- * The body scroller's vertical scrollbar takes LAYOUT width (a classic scrollbar); the header
- * and footer viewports have none, so their pinned cells would anchor 11-odd pixels further
- * inline-end and drift out of alignment with the body's while scrolling. Measured here and
- * paid back as padding-inline-end on the mirrored regions — with an overlay-scrollbar host
- * (or a body that doesn't scroll vertically) the delta is 0 and nothing changes.
+ * The floating scrollbars are reka-ui's ScrollArea (the Vue port of the same Radix primitives
+ * Mantine's ScrollArea wraps in the React edition), `type="hover"` and all: reveal semantics,
+ * pixel-sized thumbs, drag, RTL. Its Viewport component renders the scrolling div itself, so
+ * the element every ledger mechanism keys on (the scroll mirror, the virtualizer, row
+ * scrolling, `onEndReached`) is the component's exposed viewport, bridged into `viewportRef`.
  */
-const scrollbarWidth = ref(0);
+const rekaViewport = ref<{ viewportElement: HTMLDivElement } | null>(null);
 
-function measureScrollbarWidth(): void {
-  const el = viewportRef.value;
-
-  if (!el) {
-    return;
-  }
-
-  const next = el.offsetWidth - el.clientWidth;
-
-  if (scrollbarWidth.value !== next) {
-    scrollbarWidth.value = next;
-  }
-}
-
-/**
- * The floating scrollbars: native bars take layout width and shove the mirrored header
- * regions around, so the scroller's own are hidden and these two render in their place —
- * absolutely positioned over the content (the Mantine ScrollArea behavior), driven by the
- * scroll position and draggable with the pointer.
- */
-const scrollMetrics = ref({ left: 0, top: 0, clientWidth: 0, scrollWidth: 0, clientHeight: 0, scrollHeight: 0 });
-
-function readScrollMetrics(): void {
-  const el = viewportRef.value;
-
-  if (!el) {
-    return;
-  }
-
-  scrollMetrics.value = {
-    left: el.scrollLeft,
-    top: el.scrollTop,
-    clientWidth: el.clientWidth,
-    scrollWidth: el.scrollWidth,
-    clientHeight: el.clientHeight,
-    scrollHeight: el.scrollHeight
-  };
-}
-
-const xDragging = ref(false);
-const yDragging = ref(false);
-const scrollerHovered = ref(false);
-
-function onScrollerPointerEnter(): void {
-  scrollerHovered.value = true;
-}
-
-function onScrollerPointerLeave(): void {
-  scrollerHovered.value = false;
-}
-
-const scrollbarsVisible = computed(() => scrollerHovered.value || xDragging.value || yDragging.value);
-
-function onThumbPointerDown(event: PointerEvent, axis: "x" | "y"): void {
-  const el = viewportRef.value;
-
-  if (!el) {
-    return;
-  }
-
-  const start = axis === "x" ? event.clientX : event.clientY;
-  const startScroll = axis === "x" ? el.scrollLeft : el.scrollTop;
-
-  (axis === "x" ? xDragging : yDragging).value = true;
-  event.preventDefault();
-
-  const onMove = (move: PointerEvent) => {
-    const distance = (axis === "x" ? move.clientX : move.clientY) - start;
-    const span = axis === "x" ? el.clientWidth : el.clientHeight;
-    const overflow = axis === "x" ? el.scrollWidth - span : el.scrollHeight - span;
-    const track = axis === "x"
-      ? (scrollMetrics.value.clientWidth / scrollMetrics.value.scrollWidth) * span
-      : (scrollMetrics.value.clientHeight / scrollMetrics.value.scrollHeight) * span;
-
-    if (overflow <= 0 || track <= 0) {
-      return;
-    }
-
-    const value = startScroll + (distance / track) * overflow;
-
-    if (axis === "x") {
-      el.scrollLeft = value;
-    } else {
-      el.scrollTop = value;
-    }
-  };
-
-  const onUp = () => {
-    (axis === "x" ? xDragging : yDragging).value = false;
-    window.removeEventListener("pointermove", onMove);
-    window.removeEventListener("pointerup", onUp);
-  };
-
-  window.addEventListener("pointermove", onMove);
-  window.addEventListener("pointerup", onUp);
-}
-
-const xThumbStyle = computed(() => {
-  const m = scrollMetrics.value;
-
-  if (m.scrollWidth <= m.clientWidth) {
-    return null;
-  }
-
-  return {
-    width: `${(m.clientWidth / m.scrollWidth) * 100}%`,
-    insetInlineStart: `${(Math.abs(m.left) / m.scrollWidth) * 100}%`
-  };
-});
-
-const yThumbStyle = computed(() => {
-  const m = scrollMetrics.value;
-
-  if (m.scrollHeight <= m.clientHeight) {
-    return null;
-  }
-
-  return {
-    height: `${(m.clientHeight / m.scrollHeight) * 100}%`,
-    insetBlockStart: `${(Math.abs(m.top) / m.scrollHeight) * 100}%`
-  };
-});
-
-watch(viewportRef, (el, _previous, onCleanup) => {
-  measureScrollbarWidth();
-
-  if (!el || typeof ResizeObserver === "undefined") {
-    return;
-  }
-
-  // The scrollbar appears and disappears with vertical overflow — re-measure whenever the
-  // scroller's box changes.
-  const observer = new ResizeObserver(() => {
-    measureScrollbarWidth();
-    readScrollMetrics();
-  });
-
-  observer.observe(el);
-  onCleanup(() => observer.disconnect());
+watch(() => rekaViewport.value?.viewportElement, (element) => {
+  viewportRef.value = element ?? null;
 }, { immediate: true, flush: "post" });
 
 // ---- the width engine (docs/sizing.md) ----
@@ -1032,7 +903,6 @@ const handleScrollPositionChange = () => {
   mirrorBodyScrollLeft();
   maybeFireEndReached();
   updateScrollEdges();
-  readScrollMetrics();
 };
 
 /* ---- imperative handle ---- */
@@ -1450,39 +1320,29 @@ const mainProps = computed(() => ({
   role: "table" as const,
   ...getStyles("main")
 }));
-const headerFooterPadding = computed(() =>
-  scrollbarWidth.value > 0 ? { paddingInlineEnd: `${scrollbarWidth.value}px` } : undefined);
-const headerProps = computed(() => ({ ...getStyles("header"), style: headerFooterPadding.value }));
-const footerProps = computed(() => ({ ...getStyles("footer"), style: headerFooterPadding.value }));
-const scrollerProps = computed(() => {
-  // overscroll-behavior: none — rubber-band overscroll translates the body past its
-  // clamped scroll position, which the mirrored header/footer can never follow; the
-  // regions shear apart for the duration of the bounce.
-  const scrollerStyles = getStyles("scroller");
+const headerProps = computed(() => getStyles("header"));
+const footerProps = computed(() => getStyles("footer"));
+/* The scroller is the ScrollArea's ROOT wrapper (reka ScrollAreaRoot rendering our div through
+   as-child) — the positioned, non-scrolling frame the floating scrollbars and the bottom seam
+   anchor to, exactly the seat `.ledger-scroller` holds in the React edition. */
+const scrollerProps = computed(() => getStyles("scroller"));
+const viewportAttrs = computed(() =>
+  // overscroll-behavior: none — rubber-band overscroll translates the body past its clamped
+  // scroll position, which the mirrored header/footer can never follow; the regions shear
+  // apart for the duration of the bounce.
+  mergeElementProps(props.viewportProps as Record<string, unknown> | undefined, {
+    style: { overscrollBehavior: "none" as const },
+    onScroll: handleScrollPositionChange,
+    // With the active row on, the body viewport is the keyboard focus stop, and it carries
+    // the description of the keyboard model (`rowNavigationHintId`, composed after any the
+    // consumer passed). Deliberately unnamed: this div is `generic`, a role that prohibits
+    // an accessible name, and it cannot take a role either — that would break `table`'s
+    // owned rows.
+    "aria-describedby": viewportDescribedBy.value,
+    ...(activeRowEnabled.value ? { tabindex: 0, onKeydown: handleActiveRowKeyDown } : {})
+  })
+);
 
-  return mergeElementProps(
-    props.viewportProps as Record<string, unknown> | undefined,
-    {
-      ...scrollerStyles,
-      style: { overscrollBehavior: "none" as const, ...(scrollerStyles.style ?? {}) },
-      onScroll: handleScrollPositionChange,
-      onPointerenter: onScrollerPointerEnter,
-      onPointerleave: onScrollerPointerLeave,
-      // With the active row on, the body viewport is the keyboard focus stop, and it
-      // carries the description of the keyboard model (`rowNavigationHintId`, composed
-      // after any the consumer passed). Deliberately unnamed: this div is `generic`, a
-      // role that prohibits an accessible name, and it cannot take a role either —
-      // that would break `table`'s owned rows.
-      "aria-describedby": viewportDescribedBy.value,
-      ...(activeRowEnabled.value ? { tabindex: 0, onKeydown: handleActiveRowKeyDown } : {})
-    }
-  );
-});
-
-/* The positioning anchor around the scroller: absolutely positioned children of the scroller
-   itself belong to the scrolled coordinate space — the floating scrollbars (and the bottom
-   seam) ride up out of view the moment the body scrolls. They anchor here instead. */
-const bodyProps = computed(() => getStyles("body"));
 const emptyProps = computed(() => getStyles("empty"));
 
 // A template cannot carry the TypeScript cast, so the node-tailed `error` prop resolves here.
@@ -1652,94 +1512,98 @@ ContentHost.props = ["source"];
           </table>
         </div>
 
-        <div v-bind="bodyProps">
-          <div ref="viewportRef" v-bind="scrollerProps">
-            <table v-bind="tableProps">
-              <colgroup>
-                <template v-for="col in colgroupSpec" :key="col.key">
-                  <col v-if="col.spacer" data-ledger-spacer :style="{ width: col.width }">
-                  <col v-else :style="{ width: col.width }">
-                </template>
-              </colgroup>
+        <!-- reka-ui's ScrollArea — the same Radix primitives Mantine's ScrollArea wraps in the
+          React edition — provides the floating scrollbars: pixel-sized thumbs, pointer drag,
+          RTL, the corner geometry. as-child keeps our own .ledger-scroller div as the root
+          wrapper (the non-scrolling anchor for the bars and the bottom seam), while the
+          Viewport component renders the scrolling div itself.
 
-              <TableBody
-                :column-window="columnWindow"
-                :load-more-error="props.loadMoreError ?? false"
-                :loading="props.loading === true"
-                :loading-more="props.loadingMore === true"
-                :onLoadMoreRetry="props.onEndReached ? retryLoadMore : undefined"
-                :onVirtualizerChange="handleVirtualizerChange"
-                :reorder-source-id="reorderSourceId"
-                :reorder-target="reorderTarget"
-                :skeleton-row-count="skeletonRowCount"
-                :table="erasedTable"
-                :viewport-ref="viewportRef"
-                :virtualization="virtualization"
-              />
-            </table>
+          type="always", not "hover": reka's hover variant unmounts the bars when idle — its
+          forceMount never reaches the nested Presence (radix forwards it; reka drops it) —
+          which also parks the viewport at overflow:hidden until the first pointerenter.
+          "always" keeps them mounted and registered (Mantine's forceMount equivalent); the
+          hover REVEAL rides CSS on the wrapper instead. -->
+        <ScrollAreaRoot as-child type="always">
+          <div v-bind="scrollerProps">
+            <ScrollAreaViewport ref="rekaViewport" v-bind="viewportAttrs">
+              <table v-bind="tableProps">
+                <colgroup>
+                  <template v-for="col in colgroupSpec" :key="col.key">
+                    <col v-if="col.spacer" data-ledger-spacer :style="{ width: col.width }">
+                    <col v-else :style="{ width: col.width }">
+                  </template>
+                </colgroup>
 
-            <div
-              v-if="isEmpty"
-              v-bind="emptyProps"
-              :data-variant="filtersActive ? 'no-results' : 'no-data'"
-              role="status"
-            >
-              <!-- Polite, not assertive: filtering a table down to nothing is worth announcing,
-                but it must not interrupt the typing that caused it. -->
-              <ContentHost v-if="props.emptyState" :source="() => props.emptyState" />
-              <div v-else :style="EMPTY_BLOCK_STYLE">
-                <component
-                  :is="filtersActive ? icons.noResults : icons.empty"
-                  :size="40"
-                  :stroke-width="1.5"
+                <TableBody
+                  :column-window="columnWindow"
+                  :load-more-error="props.loadMoreError ?? false"
+                  :loading="props.loading === true"
+                  :loading-more="props.loadingMore === true"
+                  :onLoadMoreRetry="props.onEndReached ? retryLoadMore : undefined"
+                  :onVirtualizerChange="handleVirtualizerChange"
+                  :reorder-source-id="reorderSourceId"
+                  :reorder-target="reorderTarget"
+                  :skeleton-row-count="skeletonRowCount"
+                  :table="erasedTable"
+                  :viewport-ref="viewportRef"
+                  :virtualization="virtualization"
                 />
-                <span :style="EMPTY_TITLE_STYLE">{{ filtersActive ? labels.noResults : labels.empty }}</span>
+              </table>
+
+              <div
+                v-if="isEmpty"
+                v-bind="emptyProps"
+                :data-variant="filtersActive ? 'no-results' : 'no-data'"
+                role="status"
+              >
+                <!-- Polite, not assertive: filtering a table down to nothing is worth announcing,
+                  but it must not interrupt the typing that caused it. -->
+                <ContentHost v-if="props.emptyState" :source="() => props.emptyState" />
+                <div v-else :style="EMPTY_BLOCK_STYLE">
+                  <component
+                    :is="filtersActive ? icons.noResults : icons.empty"
+                    :size="40"
+                    :stroke-width="1.5"
+                  />
+                  <span :style="EMPTY_TITLE_STYLE">{{ filtersActive ? labels.noResults : labels.empty }}</span>
+                </div>
               </div>
-            </div>
 
-            <div
-              v-if="errorActive"
-              v-bind="emptyProps"
-              :data-over-rows="rowsLength > 0 || undefined"
-              data-variant="error"
-              role="alert"
-            >
-              <div :style="EMPTY_BLOCK_STYLE">
-                <component :is="icons.error" :size="40" :stroke-width="1.5" />
-                <span :style="EMPTY_TITLE_STYLE">
-                  <template v-if="props.error === true">{{ labels.error }}</template>
-                  <ContentHost v-else-if="errorContent" :source="() => errorContent" />
-                </span>
-                <LedgerButton v-if="props.onRetry" size="xs" variant="light" @click="props.onRetry()">
-                  <component :is="icons.retry" :size="14" />
-                  {{ labels.retry }}
-                </LedgerButton>
+              <div
+                v-if="errorActive"
+                v-bind="emptyProps"
+                :data-over-rows="rowsLength > 0 || undefined"
+                data-variant="error"
+                role="alert"
+              >
+                <div :style="EMPTY_BLOCK_STYLE">
+                  <component :is="icons.error" :size="40" :stroke-width="1.5" />
+                  <span :style="EMPTY_TITLE_STYLE">
+                    <template v-if="props.error === true">{{ labels.error }}</template>
+                    <ContentHost v-else-if="errorContent" :source="() => errorContent" />
+                  </span>
+                  <LedgerButton v-if="props.onRetry" size="xs" variant="light" @click="props.onRetry()">
+                    <component :is="icons.retry" :size="14" />
+                    {{ labels.retry }}
+                  </LedgerButton>
+                </div>
               </div>
-            </div>
-          </div>
+            </ScrollAreaViewport>
 
-          <!-- Siblings of the scroller, not children: an absolutely positioned child of the
-            scroller belongs to the scrolled coordinate space and rides out of view on scroll. -->
-          <div
-            v-if="xThumbStyle"
-            class="ledger-scrollbar ledger-scrollbar-x"
-            :data-visible="scrollbarsVisible || undefined"
-            :data-dragging="xDragging || undefined"
-            @pointerdown.prevent="onThumbPointerDown($event, 'x')"
-          >
-            <div class="ledger-scrollbar-thumb" :style="xThumbStyle" />
-          </div>
+            <!-- Siblings of the viewport, anchored on the root wrapper — an absolutely
+              positioned child of the scrolling div belongs to the scrolled coordinate space
+              and rides out of view on scroll. -->
+            <ScrollAreaScrollbar class="ledger-scrollbar" orientation="horizontal">
+              <ScrollAreaThumb class="ledger-scrollbar-thumb" />
+            </ScrollAreaScrollbar>
 
-          <div
-            v-if="yThumbStyle"
-            class="ledger-scrollbar ledger-scrollbar-y"
-            :data-visible="scrollbarsVisible || undefined"
-            :data-dragging="yDragging || undefined"
-            @pointerdown.prevent="onThumbPointerDown($event, 'y')"
-          >
-            <div class="ledger-scrollbar-thumb" :style="yThumbStyle" />
+            <ScrollAreaScrollbar class="ledger-scrollbar" orientation="vertical">
+              <ScrollAreaThumb class="ledger-scrollbar-thumb" />
+            </ScrollAreaScrollbar>
+
+            <ScrollAreaCorner class="ledger-scroll-corner" />
           </div>
-        </div>
+        </ScrollAreaRoot>
 
         <div v-if="hasFooter" ref="footerViewportRef" v-bind="footerProps">
           <table v-bind="tableProps">

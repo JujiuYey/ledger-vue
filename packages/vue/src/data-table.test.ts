@@ -242,7 +242,7 @@ describe("DataTable", () => {
     expect(onRowClick).toHaveBeenCalledTimes(1);
     expect(onRowActivate).toHaveBeenCalledTimes(1);
 
-    const viewport = q(".ledger-scroller[tabindex=\"0\"]");
+    const viewport = q("[data-reka-scroll-area-viewport]");
 
     expect(viewport).toBeTruthy();
 
@@ -274,7 +274,7 @@ describe("DataTable", () => {
 
     // The focus stop is a roleless div: `generic` prohibits an accessible name but not a
     // description, and the description has to be on the focused element to ever be read.
-    const viewport = q(".ledger-scroller[tabindex=\"0\"]");
+    const viewport = q("[data-reka-scroll-area-viewport]");
 
     expect(viewport?.hasAttribute("aria-label")).toBe(false);
 
@@ -711,7 +711,7 @@ describe("DataTable", () => {
     mountTable({ columns, data: people, getRowId, tableMinWidth: 2000 });
 
     const header = q(".ledger-header");
-    const viewport = q(".ledger-scroller");
+    const viewport = q("[data-reka-scroll-area-viewport]");
 
     expect(header).toBeTruthy();
     expect(viewport).toBeTruthy();
@@ -739,59 +739,38 @@ describe("DataTable", () => {
     expect(viewport?.scrollLeft).toBe(170);
   });
 
-  it("anchors the floating scrollbars outside the scrolled coordinate space", async () => {
-    // Regression: the bars were absolutely positioned INSIDE .ledger-scroller — a positioned
-    // child of a scroll container belongs to the scrolled contents, so the bars rode up out
-    // of view the moment the body scrolled (correct only at scrollTop 0).
+  it("renders the ScrollArea scrollbars on the root wrapper, outside the scrolling div", async () => {
+    // Regression (twice over): hand-rolled bars first sat inside the scrolling div — a
+    // positioned child of a scroll container belongs to the scrolled contents and rides out
+    // of view on scroll. The reka ScrollArea keeps them on the root wrapper (the seat
+    // .ledger-scroller holds in the React edition), one per orientation, always mounted —
+    // reka's hover type would unmount them idle and park the viewport at overflow:hidden
+    // (its forceMount never reaches the nested Presence), so the wrapper runs type="always"
+    // and the hover reveal is CSS. The corner is size-gated and stays unrendered in jsdom.
     mountTable({ columns, data: people, getRowId, tableMinWidth: 2000 });
 
-    const body = q(".ledger-body");
-    const scroller = q(".ledger-scroller") as HTMLDivElement;
-
-    // jsdom lays nothing out — the overflow metrics exist only where the test supplies them.
-    Object.defineProperty(scroller, "scrollWidth", { value: 2000, configurable: true });
-    Object.defineProperty(scroller, "clientWidth", { value: 800, configurable: true });
-    Object.defineProperty(scroller, "scrollHeight", { value: 2000, configurable: true });
-    Object.defineProperty(scroller, "clientHeight", { value: 600, configurable: true });
-
-    await scroller.dispatchEvent(new Event("scroll", { bubbles: true }));
+    // The viewport's overflow style settles on the microtask queue (the axis registration
+    // fires from a watcher during the scrollbars' setup, re-rendering the already-mounted
+    // viewport).
     await tick();
+
+    const wrapper = q(".ledger-scroller") as HTMLDivElement;
+    const viewport = q("[data-reka-scroll-area-viewport]");
+
+    expect(viewport?.parentElement).toBe(wrapper);
+    // Both axes registered — the viewport must be scrollable from load, keyboard included.
+    expect(viewport?.style.overflowX).toBe("scroll");
+    expect(viewport?.style.overflowY).toBe("scroll");
 
     const bars = all(".ledger-scrollbar");
 
     expect(bars.length).toBe(2);
+    expect(bars.map(bar => bar.dataset.orientation).sort()).toEqual(["horizontal", "vertical"]);
+
     for (const bar of bars) {
-      expect(body?.contains(bar)).toBe(true);
-      expect(scroller.contains(bar)).toBe(false);
-    }
-  });
-
-  it("reveals the floating scrollbars on scroller hover", async () => {
-    mountTable({ columns, data: people, getRowId, tableMinWidth: 2000 });
-
-    const scroller = q(".ledger-scroller") as HTMLDivElement;
-
-    Object.defineProperty(scroller, "scrollWidth", { value: 2000, configurable: true });
-    Object.defineProperty(scroller, "clientWidth", { value: 800, configurable: true });
-    Object.defineProperty(scroller, "scrollHeight", { value: 2000, configurable: true });
-    Object.defineProperty(scroller, "clientHeight", { value: 600, configurable: true });
-
-    await scroller.dispatchEvent(new Event("scroll", { bubbles: true }));
-    await tick();
-
-    const bars = all(".ledger-scrollbar");
-    expect(bars.length).toBe(2);
-
-    await scroller.dispatchEvent(new Event("pointerenter"));
-    await tick();
-    for (const bar of bars) {
-      expect(Object.hasOwn(bar.dataset, "visible")).toBe(true);
-    }
-
-    await scroller.dispatchEvent(new Event("pointerleave"));
-    await tick();
-    for (const bar of bars) {
-      expect(Object.hasOwn(bar.dataset, "visible")).toBe(false);
+      expect(bar.parentElement).toBe(wrapper);
+      expect(viewport?.contains(bar)).toBe(false);
+      expect(bar.querySelector(".ledger-scrollbar-thumb")).toBeTruthy();
     }
   });
 

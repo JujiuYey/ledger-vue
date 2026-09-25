@@ -172,87 +172,86 @@
     overflow: hidden;
   }
 
-  /* The positioning anchor around the scroller: an absolutely positioned child of the scroller
-     itself belongs to the scrolled coordinate space and rides up out of view the moment the
-     body scrolls. The floating scrollbars and the bottom seam anchor to this wrapper instead —
-     its box is exactly the scroller's box, minus the scrolling. */
-  .ledger-body {
-    position: relative;
-    display: flex;
-    flex: 1 1 auto;
-    flex-direction: column;
-    min-width: 0;
-    min-height: 0;
-  }
-
-  /* The one elastic region — the native overflow region hosting the body table. */
+  /* The ScrollArea root wrapper (reka's ScrollAreaRoot renders it through as-child): the
+     positioned, NON-scrolling frame. The floating scrollbars and the bottom seam anchor here
+     — an absolutely positioned child of the scrolling div itself belongs to the scrolled
+     coordinate space and rides out of view on scroll. Same seat `.ledger-scroller` holds in
+     the React edition. */
   .ledger-scroller {
     position: relative;
     flex: 1 1 auto;
     min-height: 0;
-    overflow: auto;
 
-    /* overscroll-behavior: none — rubber-band overscroll translates the body past its clamped
-       scroll position, which the mirrored header/footer can never follow; the regions shear
-       apart for the duration of the bounce. Native scrollbars are hidden entirely — the
-       floating bars below render in their place (they take no layout width, so the mirrored
-       header/footer need no scrollbar-width compensation). */
-    overscroll-behavior: none;
-    scrollbar-width: none;
+    /* The floating scrollbar scale (Mantine's --scrollarea-scrollbar-size twin; 0.75rem). */
+    --ledger-scrollbar-size: 12px;
   }
 
-  .ledger-scroller::-webkit-scrollbar {
+  /* The reka Viewport is the scrolling div (inline overflow from reka; native bars hidden by
+     the style tag reka injects on [data-reka-scroll-area-viewport]; overscroll comes from the
+     element's inline style in data-table.vue). It fills the wrapper. */
+  .ledger-scroller > [data-reka-scroll-area-viewport] {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Floating scrollbars: reka ScrollArea parts carrying Mantine ScrollArea's geometry — 12px
+     transparent tracks overlaying the edges, inset from the corner, pointer-driven by reka
+     (thumb sized in px by reka's own observers). Hidden until the pointer enters the wrapper
+     (the hover model; see data-table.vue for why the reveal rides CSS here). The reveal
+     switches DISPLAY, Mantine's own mechanism — an animated property (opacity) would stay
+     frozen at its start value wherever animations are suspended (occluded webviews). */
+  .ledger-scrollbar {
+    box-sizing: border-box;
+    display: flex;
+    padding: calc(var(--ledger-scrollbar-size) / 5);
+    background-color: transparent;
+    user-select: none;
+    touch-action: none;
+    transition: background-color 150ms ease;
+  }
+
+  .ledger-scroller:not(:hover) .ledger-scrollbar {
     display: none;
   }
 
-  /* Floating scrollbars (the Mantine ScrollArea behavior): 12px tracks overlaying the bottom
-     and inline-end edges, above the pinned cells (z-index 2), appearing on hover and while
-     dragging. */
-  .ledger-scrollbar {
-    position: absolute;
-    z-index: 3;
-    display: flex;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 150ms ease;
-  }
-
-  /* Two arms on purpose. The CSS :hover arm reveals on pointer presence alone — a stale
-     module graph (hot-reload zombies) must not seal the scroll UI — while [data-visible]
-     (set on scroller pointer enter/leave and during thumb drags) is the JS arm that survives
-     any unlayered host rule that beats a plain :hover chain. */
-  .ledger-body:hover .ledger-scrollbar,
-  .ledger-scrollbar[data-visible] {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .ledger-scrollbar-x {
-    inset-inline: 0;
-    inset-block-end: 0;
-    height: 12px;
-    padding: 2px 3px;
-    align-items: center;
-  }
-
-  .ledger-scrollbar-y {
-    inset-block: 0;
+  .ledger-scrollbar[data-orientation="vertical"] {
+    width: var(--ledger-scrollbar-size);
+    inset-block: 0 var(--reka-scroll-area-corner-width);
     inset-inline-end: 0;
-    width: 12px;
-    padding: 3px 2px;
-    justify-content: center;
+  }
+
+  .ledger-scrollbar[data-orientation="horizontal"] {
+    height: var(--ledger-scrollbar-size);
+    flex-direction: column;
+    inset-block-end: 0;
+    inset-inline: 0 var(--reka-scroll-area-corner-width);
+  }
+
+  /* Scrollbars (the ScrollArea children carrying data-orientation) are transient chrome and
+     float ABOVE pinned cells/rows (z-index 2), matching native overlay scrollbars — Mantine
+     gives them no z-index of their own, so a covered track stretch would be unreachable and
+     the thumb would vanish under a pinned column exactly at the scroll extremes. */
+  .ledger-scroller > [data-orientation] {
+    z-index: 3;
   }
 
   .ledger-scrollbar-thumb {
-    flex: none;
-    width: 100%;
-    height: 100%;
-    background-color: color-mix(in srgb, var(--ledger-color-text) 38%, transparent);
-    border-radius: 6px;
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    border-radius: var(--ledger-scrollbar-size);
+    background-color: color-mix(in srgb, var(--ledger-color-text) 40%, transparent);
   }
 
-  .ledger-scrollbar[data-dragging] .ledger-scrollbar-thumb {
-    background-color: color-mix(in srgb, var(--ledger-color-text) 55%, transparent);
+  /* The corner is never seen (Mantine keeps it opacity 0): it exists to measure the corner
+     box that reka publishes as --reka-scroll-area-corner-width/height and the bars inset by. */
+  .ledger-scroll-corner {
+    position: absolute;
+    inset-inline-end: 0;
+    inset-block-end: 0;
+    display: block;
+    opacity: 0;
+    background-color: transparent;
   }
 
   /* An empty (or errored-out) body has no rows to give the region height — keep a readable
@@ -1038,8 +1037,8 @@
      it) and, with row borders, as the separator above a footer. z-index 2 = the pinned-cell
      tier: a later sibling of the scroller, so it paints over scrolling pinned cells (their
      opaque backgrounds would erase the line mid-scroll) while staying under the scrollbars (3). */
-  .ledger-root[data-with-bottom-border]:not([data-with-table-border]) .ledger-body::after,
-  .ledger-root[data-with-row-borders][data-with-footer] .ledger-body::after {
+  .ledger-root[data-with-bottom-border]:not([data-with-table-border]) .ledger-scroller::after,
+  .ledger-root[data-with-row-borders][data-with-footer] .ledger-scroller::after {
     position: absolute;
     inset-block-end: 0;
     inset-inline: 0;

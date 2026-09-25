@@ -60,10 +60,11 @@
   },
   "dependencies": {
     "@dnd-kit/dom": "^0.5.0",
+    "@tanstack/table-core": "^9.2.4",
     "@tanstack/vue-table": "^9.2.4",
     "@tanstack/vue-virtual": "^3.13.39",
     "clsx": "^2.1.1",
-    "@tanstack/table-core": "^9.2.4"
+    "reka-ui": "^2.10.5"
   },
   "peerDependencies": {
     "vue": "^3.5.0"

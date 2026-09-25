@@ -18,7 +18,6 @@ export type DataTableStylesNames
   = | "root"
     | "main"
     | "header"
-    | "body"
     | "scroller"
     | "footer"
     | "table"
@@ -65,7 +64,6 @@ export const dataTableClasses: Record<DataTableStylesNames, string> = {
   root: "ledger-root",
   main: "ledger-main",
   header: "ledger-header",
-  body: "ledger-body",
   scroller: "ledger-scroller",
   footer: "ledger-footer",
   table: "ledger-table",

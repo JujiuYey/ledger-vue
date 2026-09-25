@@ -70,7 +70,7 @@ The behavior surface keeps its names; only the framework mechanics change:
 | `<DataTable.Search />` static components | named imports `DataTableSearch`, `DataTableColumnsPanel`, `DataTablePagination`, `DataTableSelectionBar` (also attached as `DataTable.Search` etc. at runtime) |
 | `useDataTable(options)` re-runs per render | composable runs once; reactive inputs (`data`, `columns`, every state slice) accept a ref/getter — plain values are adopted as-is |
 | Mantine theme carries colors/metrics | tokens are library-owned (`--ledger-*` on `.ledger-root`, dark via `data-color-scheme` or the OS preference); `colorScheme` prop forces a mode |
-| Mantine `ScrollArea` | native overflow scroller (thin scrollbars, `overscroll-behavior: none`) |
+| Mantine `ScrollArea` | reka-ui `ScrollArea` (the Vue port of the same Radix primitives) on the `.ledger-scroller` wrapper — `type="always"` bars revealed by a CSS `:hover` arm (reka's hover type unmounts them idle; its `forceMount` never reaches the nested Presence), `overscroll-behavior: none` on the viewport |
 | `flexRender` from `@tanstack/react-table` | `flexRender` from `@tanstack/vue-table`; renderers return `VNodeChild` |
 | Styles API `classNames`/`styles` props | same prop names, same selectors, no theme variables |
 

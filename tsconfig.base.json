@@ -17,6 +17,16 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "customConditions": ["source"],
+    "paths": {
+      "@internationalized/date": [
+        // reka-ui's types re-export from @internationalized/date, which publishes its TS
+        // SOURCE under the `source` condition customConditions follows — source that fails
+        // our strict flags (verbatimModuleSyntax, noImplicitOverride). The bare specifier is
+        // pinned to the shipped declaration tree; the hoisted store path survives version
+        // bumps while a single version is installed.
+        "./node_modules/.pnpm/node_modules/@internationalized/date/dist/types/src/index.d.ts"
+      ]
+    },
     "types": [],
     "noEmit": true
   }
