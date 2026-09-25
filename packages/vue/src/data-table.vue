@@ -408,6 +408,44 @@ const viewportRef = ref<HTMLDivElement | null>(null);
 const headerViewportRef = ref<HTMLDivElement | null>(null);
 const footerViewportRef = ref<HTMLDivElement | null>(null);
 
+/**
+ * The body scroller's vertical scrollbar takes LAYOUT width (a classic scrollbar); the header
+ * and footer viewports have none, so their pinned cells would anchor 11-odd pixels further
+ * inline-end and drift out of alignment with the body's while scrolling. Measured here and
+ * paid back as padding-inline-end on the mirrored regions — with an overlay-scrollbar host
+ * (or a body that doesn't scroll vertically) the delta is 0 and nothing changes.
+ */
+const scrollbarWidth = ref(0);
+
+function measureScrollbarWidth(): void {
+  const el = viewportRef.value;
+
+  if (!el) {
+    return;
+  }
+
+  const next = el.offsetWidth - el.clientWidth;
+
+  if (scrollbarWidth.value !== next) {
+    scrollbarWidth.value = next;
+  }
+}
+
+watch(viewportRef, (el, _previous, onCleanup) => {
+  measureScrollbarWidth();
+
+  if (!el || typeof ResizeObserver === "undefined") {
+    return;
+  }
+
+  // The scrollbar appears and disappears with vertical overflow — re-measure whenever the
+  // scroller's box changes.
+  const observer = new ResizeObserver(() => measureScrollbarWidth());
+
+  observer.observe(el);
+  onCleanup(() => observer.disconnect());
+}, { immediate: true, flush: "post" });
+
 // ---- the width engine (docs/sizing.md) ----
 // Display order is pinned-aware (start + center + end) — header groups and row cells
 // already render in it, so the colgroup and every width/offset must follow the same order.
@@ -1299,8 +1337,10 @@ const mainProps = computed(() => ({
   role: "table" as const,
   ...getStyles("main")
 }));
-const headerProps = computed(() => getStyles("header"));
-const footerProps = computed(() => getStyles("footer"));
+const headerFooterPadding = computed(() =>
+  scrollbarWidth.value > 0 ? { paddingInlineEnd: `${scrollbarWidth.value}px` } : undefined);
+const headerProps = computed(() => ({ ...getStyles("header"), style: headerFooterPadding.value }));
+const footerProps = computed(() => ({ ...getStyles("footer"), style: headerFooterPadding.value }));
 const scrollerProps = computed(() => {
   // overscroll-behavior: none — rubber-band overscroll translates the body past its
   // clamped scroll position, which the mirrored header/footer can never follow; the
