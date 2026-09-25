@@ -1278,6 +1278,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    /* The text line box otherwise runs ~1px taller than the box and the flex-centered pair
+       reads half a pixel off. Same height = exact centering. */
+    line-height: var(--ledger-checkbox-size);
   }
 
   /* ------------------------------------------------------------------------------------------
