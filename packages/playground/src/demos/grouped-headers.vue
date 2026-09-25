@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ColumnDef, VueContent } from "@coldsmirk/ledger-vue";
+import type { ColumnDef } from "@coldsmirk/ledger-vue";
 import { createColumnHelper, DataTable } from "@coldsmirk/ledger-vue";
 import { computed, h } from "vue";
 
@@ -283,14 +283,14 @@ const columns = computed((): Array<ColumnDef<StoreQuarter, any>> => [
       footerCellProps: { "data-total": "true" }
     }
   })
-];
+]);
 </script>
 
 <template>
   <!-- h="auto" / maw={1100} in the React edition: a fixed-size document that hugs its content
        instead of stretching over the page. -->
   <DataTable
-    :labels="labels.value"
+    :labels="labels"
     highlight-on-hover
     tabular-nums
     with-column-borders

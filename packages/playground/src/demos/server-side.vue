@@ -196,7 +196,7 @@ const columns = computed((): Array<ColumnDef<Person, any>> => [
     header: t.value.status,
     size: 120,
     enableSorting: false,
-    cell: context => h("span", {
+    cell: (context: { getValue: () => "active" | "invited" | "suspended" }) => h("span", {
       class: "pg-badge",
       "data-color": statusColor[context.getValue()]
     }, t.value.statuses[context.getValue()]),
@@ -301,7 +301,7 @@ const queryLine = computed(() => {
     <div class="pg-row">
       <DataTableSearch
         :labels="labels"
-        :table="table"
+        :table="table as any"
         :placeholder="t.searchPlaceholder"
         :width="240"
       />
@@ -317,7 +317,7 @@ const queryLine = computed(() => {
 
     <DataTable
       :labels="labels"
-      :table="table"
+      :table="table as any"
       striped
       style="flex: 1; min-height: 0"
       tabular-nums

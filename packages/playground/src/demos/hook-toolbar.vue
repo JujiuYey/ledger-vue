@@ -81,7 +81,7 @@ const columns = computed((): Array<ColumnDef<Person, any>> => [
   helper.accessor("status", {
     header: columnT.value.status,
     size: 110,
-    cell: context => h("span", {
+    cell: (context: { getValue: () => "active" | "invited" | "suspended" }) => h("span", {
       class: "pg-badge",
       "data-color": statusColor[context.getValue()]
     }, columnT.value.statuses[context.getValue()]),
@@ -130,22 +130,22 @@ const table = useDataTable({
     <div class="pg-row" style="align-self: stretch; justify-content: space-between">
       <!-- No theme defaultProps in the Vue edition: every table and compound takes the shell's
           `labels` from useLangLabels(). -->
-      <DataTableSearch :labels="labels" :table="table" :width="260" />
+      <DataTableSearch :labels="labels" :table="table as any" :width="260" />
 
       <!-- The default slot IS the trigger — the panel never assumes what opens it. -->
-      <DataTableColumnsPanel :labels="labels" :table="table">
+      <DataTableColumnsPanel :labels="labels" :table="table as any">
         <button class="pg-button" type="button">{{ t.columns }}</button>
       </DataTableColumnsPanel>
     </div>
 
     <DataTable
       :labels="labels"
-      :table="table"
+      :table="table as any"
       striped
       style="flex: 1; min-height: 0"
       :with-pagination-bar="false"
     />
 
-    <DataTablePagination :labels="labels" :table="table" />
+    <DataTablePagination :labels="labels" :table="table as any" />
   </div>
 </template>

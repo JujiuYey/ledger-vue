@@ -85,7 +85,7 @@ const columns = computed((): Array<ColumnDef<MenuItem, any>> => [
   helper.accessor("kind", {
     header: t.value.kind,
     size: 110,
-    cell: context =>
+    cell: (context: { getValue: () => "menu" | "directory" | "action" }) =>
       h("span", { class: "pg-badge", "data-color": kindColor[context.getValue()] }, t.value.kinds[context.getValue()]),
     meta: {
       filter: {
@@ -149,7 +149,7 @@ const columns = computed((): Array<ColumnDef<MenuItem, any>> => [
 
 <template>
   <DataTable
-    :labels="labels.value"
+    :labels="labels"
     highlight-on-hover
     tabular-nums
     :columns="columns"

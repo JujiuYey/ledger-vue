@@ -71,7 +71,7 @@ const columns = computed((): Array<ColumnDef<LogEntry, any>> => [
   helper.accessor("level", {
     header: t.value.level,
     size: 90,
-    cell: context => h("span", {
+    cell: (context: { getValue: () => "info" | "warn" | "error" }) => h("span", {
       class: "pg-badge",
       "data-color": levelColor[context.getValue()]
     }, context.getValue())

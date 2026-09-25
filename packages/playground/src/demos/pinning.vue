@@ -64,6 +64,11 @@ const statusColor: Record<Person["status"], string> = {
   suspended: "red"
 };
 
+const t = useCopy(copy);
+const tp = useCopy(personCopy);
+const { lang } = useLang();
+const labels = useLangLabels();
+
 function statusBadge(status: Person["status"]): VueContent {
   return h("span", { class: "pg-badge", "data-color": statusColor[status] }, tp.value.statuses[status]);
 }
@@ -95,11 +100,6 @@ function cogIcon(): VueContent {
     ]
   );
 }
-
-const t = useCopy(copy);
-const tp = useCopy(personCopy);
-const { lang } = useLang();
-const labels = useLangLabels();
 
 const data = computed(() => makePeople(lang.value, 80));
 
@@ -190,7 +190,8 @@ const columns = computed((): Array<ColumnDef<Person, any>> => [
             {
               // Remount on a language flip: the panel resolves its labels once at setup.
               key: lang.value,
-              table,
+              // as any: compounds type `table` as TableInstance<any> (known limitation)
+              table: table as any,
               labels: labels.value
             },
             {
@@ -220,7 +221,7 @@ const columns = computed((): Array<ColumnDef<Person, any>> => [
                       toggle();
                     }
                   },
-                  cogIcon()
+                  [cogIcon()]
                 )
             }
           )
@@ -268,14 +269,14 @@ const drawerOpened = ref(false);
 <template>
   <div class="pg-stack" style="flex: 1; min-height: 0">
     <div class="pg-row" style="align-self: stretch; flex-wrap: nowrap; justify-content: space-between">
-      <p style="flex: 1; margin: 0; font-size: 12px; color: var(--pg-dimmed)">{{ t.value.hint }}</p>
+      <p style="flex: 1; margin: 0; font-size: 12px; color: var(--pg-dimmed)">{{ t.hint }}</p>
 
-      <button class="pg-button" type="button" @click="drawerOpened = true">{{ t.value.barePanel }}</button>
+      <button class="pg-button" type="button" @click="drawerOpened = true">{{ t.barePanel }}</button>
     </div>
 
     <DataTable
-      :table="table"
-      :labels="labels.value"
+      :table="table as any"
+      :labels="labels"
       :table-min-width="1280"
       style="flex: 1; min-height: 0"
     />
@@ -294,7 +295,7 @@ const drawerOpened = ref(false);
     <aside
       style="position: fixed; inset-block: 0; inset-inline-end: 0; z-index: 201; width: 380px; overflow-y: auto; background: var(--pg-panel); box-shadow: -4px 0 24px rgb(0 0 0 / 10%)"
     >
-      <DataTableColumnsPanel :key="lang" :table="table" :labels="labels.value" />
+      <DataTableColumnsPanel :key="lang" :table="table as any" :labels="labels" />
     </aside>
   </template>
 </template>

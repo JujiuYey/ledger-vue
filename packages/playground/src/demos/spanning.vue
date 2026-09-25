@@ -261,7 +261,7 @@ const columns = computed((): Array<ColumnDef<ReportRow, any>> => [
        height hugs the rows and the width caps at 880px, where the width engine spreads the
        surplus over the five sized columns. -->
   <DataTable
-    :labels="labels.value"
+    :labels="labels"
     tabular-nums
     with-column-borders
     with-table-border
