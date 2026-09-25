@@ -837,17 +837,17 @@
      this is the last link in the chain that must be allowed to shrink; without it the nowrap
      title below sets an unshrinkable floor and shoves the rest of the row out of alignment. */
   .ledger-columns-panel-label {
+    display: flex;
+    align-items: center;
     min-width: 0;
   }
 
   /* Long titles ellipse rather than wrap — a two-line row among one-line rows reads as a break
      in the list. */
-  .ledger-columns-panel-label > label {
-    display: block;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+  /* The original rule targeted the Mantine checkbox's TEXT label (a nested <label>); here the
+     LedgerCheckbox root IS a <label> and this selector used to hit it with display: block —
+     killing the flex gap and baseline-riding the box above the text. Ellipsis lives on
+     .ledger-checkbox-label instead. */
 
   /* Hidden columns stay listed — bringing them back is the point — but read as absent. The
      color sits on OUR wrapper, not on Mantine's label: that label declares `color: inherit` in
