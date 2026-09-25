@@ -1,36 +1,22 @@
 /*
- * Playground chrome — deliberately plain CSS, no framework. The table itself is styled by
- * the library's own stylesheet (imported in App.vue).
+ * App-level styling for the playground shell itself — the Vue edition carries the chrome in
+ * plain CSS (no component library), styled after the React edition's Mantine defaults:
+ * light-first, a 52px header, a 240px grouped navbar, system type, hairline borders.
+ * Library rules all live in the `ledger` cascade layer; anything here is what a host
+ * application would write.
  */
 
 :root {
-  --pg-bg: #f8f9fa;
+  --pg-body: #ffffff;
   --pg-panel: #ffffff;
-  --pg-border: #dee2e6;
-  --pg-text: #212529;
-  --pg-dimmed: #74797f;
-  --pg-accent: #228be6;
-  color-scheme: light dark;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --pg-bg: #131417;
-    --pg-panel: #1a1b1e;
-    --pg-border: #373a40;
-    --pg-text: #e9ecef;
-    --pg-dimmed: #909296;
-    --pg-accent: #4dabf7;
-  }
-}
-
-:root[data-theme="dark"] {
-  --pg-bg: #131417;
-  --pg-panel: #1a1b1e;
-  --pg-border: #373a40;
-  --pg-text: #e9ecef;
+  --pg-border: #e9ecef;
+  --pg-text: #1e1e1e;
   --pg-dimmed: #909296;
-  --pg-accent: #4dabf7;
+  --pg-accent: #228be6;
+  --pg-accent-light: #e7f5ff;
+  --pg-hover: rgb(0 0 0 / 4%);
+  --pg-code-bg: #f8f9fa;
+  --pg-header-offset: 52px;
 }
 
 * {
@@ -41,62 +27,134 @@ html,
 body,
 #app {
   height: 100%;
-  margin: 0;
 }
 
 body {
+  margin: 0;
   font-family: -apple-system, "Segoe UI", "Noto Sans", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   font-size: 14px;
+  line-height: 1.5;
   color: var(--pg-text);
-  background: var(--pg-bg);
+  background: var(--pg-body);
+  -webkit-font-smoothing: antialiased;
 }
 
-.pg-shell {
+/* The header tint recipe from docs/styling.md#tinting-the-header — the two values a <th>
+   carries one step off the body (Mantine's gray-0; the dark variant exists for parity but the
+   playground is light-only, matching the React edition's default scheme). */
+.app-tinted-header {
+  --ledger-header-bg: #f8f9fa;
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * Shell: header, navbar, main
+ * ---------------------------------------------------------------------------------------------- */
+
+.pg-app {
   display: flex;
-  height: 100%;
+  flex-direction: column;
+  height: 100dvh;
 }
 
-.pg-sidebar {
+.pg-header {
+  display: flex;
+  flex: none;
+  gap: 12px;
+  align-items: center;
+  height: var(--pg-header-offset);
+  padding: 0 16px;
+  border-bottom: 1px solid var(--pg-border);
+}
+
+.pg-title {
+  font-size: 15px;
+}
+
+.pg-lang {
+  display: inline-flex;
+  margin-left: auto;
+  padding: 2px;
+  background: rgb(0 0 0 / 5%);
+  border-radius: 8px;
+}
+
+.pg-lang-option {
+  position: relative;
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.pg-lang-input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.pg-lang-label {
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--pg-dimmed);
+  border-radius: 6px;
+  transition: 120ms ease;
+}
+
+.pg-lang-input:checked + .pg-lang-label {
+  font-weight: 500;
+  color: var(--pg-text);
+  background: var(--pg-panel);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
+}
+
+.pg-lang-input:focus-visible + .pg-lang-label {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 1px;
+}
+
+.pg-burger {
+  display: none;
+  padding: 8px;
+  color: inherit;
+  cursor: pointer;
+  background: none;
+  border: 1px solid var(--pg-border);
+  border-radius: 6px;
+}
+
+.pg-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.pg-nav {
   display: flex;
   flex: none;
   flex-direction: column;
-  gap: 8px;
   width: 240px;
-  padding: 20px 14px;
+  padding: 8px;
   overflow-y: auto;
   background: var(--pg-panel);
   border-inline-end: 1px solid var(--pg-border);
 }
 
-.pg-brand {
-  padding: 0 8px 12px;
-}
-
-.pg-brand-title {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.pg-brand-subtitle {
-  margin: 4px 0 0;
-  font-size: 12px;
-  line-height: 1.5;
+.pg-nav-caption {
+  padding: 8px 10px 6px;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--pg-dimmed);
 }
 
-.pg-nav {
+.pg-nav-item {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-
-.pg-nav-item {
-  padding: 7px 10px;
+  gap: 1px;
+  width: 100%;
+  padding: 7px 12px;
   font: inherit;
   color: inherit;
   text-align: start;
-  text-decoration: none;
   cursor: pointer;
   background: none;
   border: 0;
@@ -104,107 +162,265 @@ body {
 }
 
 .pg-nav-item:hover {
-  background: rgb(0 0 0 / 5%);
+  background: var(--pg-hover);
 }
 
 .pg-nav-item[data-active] {
+  background: var(--pg-accent-light);
+}
+
+.pg-nav-item[data-active] .pg-nav-label {
   font-weight: 600;
   color: var(--pg-accent);
-  background: color-mix(in srgb, var(--pg-accent) 12%, transparent);
 }
 
-.pg-chrome {
+.pg-nav-label {
+  font-size: 13px;
+}
+
+.pg-nav-description {
+  font-size: 11px;
+  color: var(--pg-dimmed);
+}
+
+.pg-main {
   display: flex;
-  gap: 8px;
-  margin-top: auto;
-  padding-top: 12px;
-  border-top: 1px solid var(--pg-border);
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+  padding: 16px;
 }
 
-.pg-chrome button {
-  flex: 1;
-  padding: 6px 8px;
+.pg-demo-head {
+  display: flex;
+  flex: none;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.pg-demo-copy {
+  min-width: 0;
+}
+
+.pg-demo-title {
+  margin: 0;
+  font-size: 20px;
+}
+
+.pg-demo-description {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--pg-dimmed);
+}
+
+.pg-source-button {
+  flex-shrink: 0;
+  padding: 6px 12px;
   font: inherit;
   font-size: 12px;
   color: inherit;
   cursor: pointer;
-  background: none;
+  background: var(--pg-panel);
   border: 1px solid var(--pg-border);
   border-radius: 6px;
 }
 
-.pg-chrome button:hover {
-  background: rgb(0 0 0 / 5%);
+.pg-source-button:hover {
+  background: var(--pg-code-bg);
 }
 
-.pg-main {
+/* The demo owns the leftover height; its own tables scroll inside it. */
+.pg-demo {
+  display: flex;
   flex: 1;
-  min-width: 0;
-  padding: 24px 28px;
-  overflow-y: auto;
+  flex-direction: column;
+  min-height: 0;
 }
 
-.pg-page {
-  max-width: 1180px;
-  margin: 0 auto;
+/* ------------------------------------------------------------------------------------------------
+ * Demo chrome helpers — the plain-CSS counterparts of the Mantine bits the demos use
+ * (Badge, Button, Text, Group, Stack, Code, SegmentedControl, Switch, Note).
+ * ---------------------------------------------------------------------------------------------- */
+
+.pg-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
 }
 
-.pg-page-title {
-  margin: 0 0 4px;
-  font-size: 22px;
+.pg-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
 }
 
-.pg-page-description {
-  margin: 0 0 20px;
+.pg-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+  border-radius: 999px;
+}
+
+.pg-badge[data-color="gray"] {
+  color: #495057;
+  background: #f1f3f5;
+}
+
+.pg-badge[data-color="green"] {
+  color: #2b8a3e;
+  background: #ebfbee;
+}
+
+.pg-badge[data-color="blue"] {
+  color: #1864ab;
+  background: #e7f5ff;
+}
+
+.pg-badge[data-color="red"] {
+  color: #c92a2a;
+  background: #fff5f5;
+}
+
+.pg-badge[data-color="yellow"] {
+  color: #e8590c;
+  background: #fff9db;
+}
+
+.pg-button {
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 13px;
+  color: inherit;
+  cursor: pointer;
+  background: var(--pg-panel);
+  border: 1px solid var(--pg-border);
+  border-radius: 6px;
+}
+
+.pg-button:hover {
+  background: var(--pg-code-bg);
+}
+
+.pg-button:disabled {
+  cursor: not-allowed;
   color: var(--pg-dimmed);
 }
 
-.pg-demo {
-  padding: 16px;
-  background: var(--pg-panel);
-  border: 1px solid var(--pg-border);
-  border-radius: 10px;
-}
-
-.pg-demo + .pg-demo {
-  margin-block-start: 20px;
-}
-
-.pg-demo-caption {
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.pg-table-wrap {
-  height: 420px;
-}
-
-.pg-table-wrap.tall {
-  height: 620px;
-}
-
-.pg-toolbar {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
+.pg-code {
+  padding: 1px 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  background: var(--pg-code-bg);
+  border-radius: 4px;
 }
 
 .pg-note {
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: var(--pg-dimmed);
+  max-width: 44rem;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  color: #495057;
+  background: var(--pg-code-bg);
+  border-inline-start: 3px solid var(--pg-accent);
+  border-radius: 4px;
 }
 
-.pg-output {
-  margin: 12px 0 0;
-  padding: 10px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+.pg-seg {
+  display: inline-flex;
+  padding: 2px;
+  background: rgb(0 0 0 / 5%);
+  border-radius: 8px;
+}
+
+.pg-seg button {
+  padding: 4px 12px;
+  font: inherit;
   font-size: 12px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  background: rgb(0 0 0 / 4%);
+  color: var(--pg-dimmed);
+  cursor: pointer;
+  background: none;
+  border: 0;
   border-radius: 6px;
+}
+
+.pg-seg button[data-active] {
+  font-weight: 500;
+  color: var(--pg-text);
+  background: var(--pg-panel);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 10%);
+}
+
+/* Native switch — the checkbox restyled as a track. */
+.pg-switch {
+  position: relative;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.pg-switch input {
+  appearance: none;
+  width: 34px;
+  height: 20px;
+  margin: 0;
+  cursor: pointer;
+  background: #ced4da;
+  border-radius: 999px;
+  transition: background 120ms ease;
+}
+
+.pg-switch input::before {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 14px;
+  height: 14px;
+  content: "";
+  background: #fff;
+  border-radius: 50%;
+  transition: translate 120ms ease;
+}
+
+.pg-switch input:checked {
+  background: var(--pg-accent);
+}
+
+.pg-switch input:checked::before {
+  translate: 14px 0;
+}
+
+.pg-switch input:focus-visible {
+  outline: 2px solid var(--pg-accent);
+  outline-offset: 1px;
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * Mobile: the navbar collapses behind the burger below 48em (the React edition's xs breakpoint).
+ * ---------------------------------------------------------------------------------------------- */
+
+@media (max-width: 47.99em) {
+  .pg-burger {
+    display: inline-flex;
+  }
+
+  .pg-nav {
+    position: fixed;
+    z-index: 100;
+    inset-block: var(--pg-header-offset) 0;
+    inset-inline-start: 0;
+    display: none;
+    box-shadow: 4px 0 24px rgb(0 0 0 / 10%);
+  }
+
+  .pg-nav[data-open] {
+    display: flex;
+  }
 }
