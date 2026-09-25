@@ -337,7 +337,9 @@ function selectDemo(id: DemoId): void {
           </button>
         </div>
 
-        <component :is="activeComponent" class="pg-demo" />
+        <!-- No host layout class: each demo owns its sizing (elastic demos set flex:1 on their
+             root; fixed reports like spanning hug their rows). -->
+        <component :is="activeComponent" />
       </main>
     </div>
 

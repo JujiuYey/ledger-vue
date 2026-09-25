@@ -232,14 +232,6 @@ body {
   background: var(--pg-code-bg);
 }
 
-/* The demo owns the leftover height; its own tables scroll inside it. */
-.pg-demo {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-}
-
 /* ------------------------------------------------------------------------------------------------
  * Demo chrome helpers — the plain-CSS counterparts of the Mantine bits the demos use
  * (Badge, Button, Text, Group, Stack, Code, SegmentedControl, Switch, Note).

@@ -1451,7 +1451,7 @@ ContentHost.props = ["source"];
     :data-with-bottom-border="props.withBottomBorder || undefined"
     :data-with-column-borders="props.withColumnBorders || undefined"
     :data-with-footer="hasFooter || undefined"
-    :data-with-row-borders="props.withRowBorders || undefined"
+    :data-with-row-borders="props.withRowBorders !== false || undefined"
     :data-with-table-border="props.withTableBorder || undefined"
     v-bind="rootProps"
   >
