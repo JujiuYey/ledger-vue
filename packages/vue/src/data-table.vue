@@ -431,6 +431,104 @@ function measureScrollbarWidth(): void {
   }
 }
 
+/**
+ * The floating scrollbars: native bars take layout width and shove the mirrored header
+ * regions around, so the scroller's own are hidden and these two render in their place —
+ * absolutely positioned over the content (the Mantine ScrollArea behavior), driven by the
+ * scroll position and draggable with the pointer.
+ */
+const scrollMetrics = ref({ left: 0, top: 0, clientWidth: 0, scrollWidth: 0, clientHeight: 0, scrollHeight: 0 });
+
+function readScrollMetrics(): void {
+  const el = viewportRef.value;
+
+  if (!el) {
+    return;
+  }
+
+  scrollMetrics.value = {
+    left: el.scrollLeft,
+    top: el.scrollTop,
+    clientWidth: el.clientWidth,
+    scrollWidth: el.scrollWidth,
+    clientHeight: el.clientHeight,
+    scrollHeight: el.scrollHeight
+  };
+}
+
+const xDragging = ref(false);
+const yDragging = ref(false);
+
+function onThumbPointerDown(event: PointerEvent, axis: "x" | "y"): void {
+  const el = viewportRef.value;
+
+  if (!el) {
+    return;
+  }
+
+  const start = axis === "x" ? event.clientX : event.clientY;
+  const startScroll = axis === "x" ? el.scrollLeft : el.scrollTop;
+
+  (axis === "x" ? xDragging : yDragging).value = true;
+  event.preventDefault();
+
+  const onMove = (move: PointerEvent) => {
+    const distance = (axis === "x" ? move.clientX : move.clientY) - start;
+    const span = axis === "x" ? el.clientWidth : el.clientHeight;
+    const overflow = axis === "x" ? el.scrollWidth - span : el.scrollHeight - span;
+    const track = axis === "x"
+      ? (scrollMetrics.value.clientWidth / scrollMetrics.value.scrollWidth) * span
+      : (scrollMetrics.value.clientHeight / scrollMetrics.value.scrollHeight) * span;
+
+    if (overflow <= 0 || track <= 0) {
+      return;
+    }
+
+    const value = startScroll + (distance / track) * overflow;
+
+    if (axis === "x") {
+      el.scrollLeft = value;
+    } else {
+      el.scrollTop = value;
+    }
+  };
+
+  const onUp = () => {
+    (axis === "x" ? xDragging : yDragging).value = false;
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onUp);
+  };
+
+  window.addEventListener("pointermove", onMove);
+  window.addEventListener("pointerup", onUp);
+}
+
+const xThumbStyle = computed(() => {
+  const m = scrollMetrics.value;
+
+  if (m.scrollWidth <= m.clientWidth) {
+    return null;
+  }
+
+  return {
+    width: `${(m.clientWidth / m.scrollWidth) * 100}%`,
+    insetInlineStart: `${(Math.abs(m.left) / m.scrollWidth) * 100}%`
+  };
+});
+
+const yThumbStyle = computed(() => {
+  const m = scrollMetrics.value;
+
+  if (m.scrollHeight <= m.clientHeight) {
+    return null;
+  }
+
+  return {
+    height: `${(m.clientHeight / m.scrollHeight) * 100}%`,
+    insetBlockStart: `${(Math.abs(m.top) / m.scrollHeight) * 100}%`
+  };
+});
+
 watch(viewportRef, (el, _previous, onCleanup) => {
   measureScrollbarWidth();
 
@@ -440,7 +538,10 @@ watch(viewportRef, (el, _previous, onCleanup) => {
 
   // The scrollbar appears and disappears with vertical overflow — re-measure whenever the
   // scroller's box changes.
-  const observer = new ResizeObserver(() => measureScrollbarWidth());
+  const observer = new ResizeObserver(() => {
+    measureScrollbarWidth();
+    readScrollMetrics();
+  });
 
   observer.observe(el);
   onCleanup(() => observer.disconnect());
@@ -920,6 +1021,7 @@ const handleScrollPositionChange = () => {
   mirrorBodyScrollLeft();
   maybeFireEndReached();
   updateScrollEdges();
+  readScrollMetrics();
 };
 
 /* ---- imperative handle ---- */
@@ -1595,6 +1697,23 @@ ContentHost.props = ["source"];
               </LedgerButton>
             </div>
           </div>
+        <div
+        v-if="xThumbStyle"
+        class="ledger-scrollbar ledger-scrollbar-x"
+        :data-dragging="xDragging || undefined"
+        @pointerdown.prevent="onThumbPointerDown($event, 'x')"
+      >
+          <div class="ledger-scrollbar-thumb" :style="xThumbStyle" />
+      </div>
+      
+        <div
+        v-if="yThumbStyle"
+        class="ledger-scrollbar ledger-scrollbar-y"
+        :data-dragging="yDragging || undefined"
+        @pointerdown.prevent="onThumbPointerDown($event, 'y')"
+      >
+          <div class="ledger-scrollbar-thumb" :style="yThumbStyle" />
+      </div>
         </div>
 
         <div v-if="hasFooter" ref="footerViewportRef" v-bind="footerProps">
