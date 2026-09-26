@@ -11,18 +11,9 @@
 import type { Component, CSSProperties, PropType, VNode } from "vue";
 import type { LedgerFilterOption } from "./types";
 import type { LedgerSize } from "./size";
-import {
-  computed,
-  defineComponent,
-  getCurrentScope,
-  h,
-  nextTick,
-  onScopeDispose,
-  ref,
-  Teleport,
-  useId,
-  watch
-} from "vue";
+import { computed, defineComponent, getCurrentScope, h, onScopeDispose, ref, useId, watch } from "vue";
+
+import { PopoverAnchor, PopoverContent, PopoverPortal, PopoverRoot } from "reka-ui";
 
 /* ------------------------------------------------------------------------------------------------
  * Shared helpers
@@ -780,10 +771,13 @@ export const LedgerMultiSelect = defineComponent({
  * ---------------------------------------------------------------------------------------------- */
 
 /**
- * The popover: a trigger anchor (the default slot — whatever the consumer renders, wired by a
- * click bubbling to the anchor) and a panel teleported to the body, positioned fixed from the
- * trigger's rect. Open state, outside-pointerdown and Escape close, focus return, and
- * repositioning on window resize/scroll live here. The content slot draws the panel.
+ * The popover: reka-ui's Popover — the Vue port of the same Radix machinery Mantine's Popover
+ * wraps in the React edition — providing what the hand-rolled version did (open state,
+ * outside-pointerdown and Escape dismissal, content focus, focus return) and what it could not
+ * (collision-aware placement through floating-ui, repositioning on resize and scroll while the
+ * anchor moves). The public shape is unchanged: the default slot is the trigger area — a click
+ * bubbling to the anchor toggles, and consumers may stopPropagation and drive `toggle`
+ * themselves — and the content slot draws the teleported panel.
  */
 export const LedgerPopover = defineComponent({
   name: "LedgerPopover",
@@ -796,74 +790,6 @@ export const LedgerPopover = defineComponent({
   setup(props, { slots }) {
     const open = ref(false);
     const anchorEl = ref<HTMLElement | null>(null);
-    const panelEl = ref<HTMLElement | null>(null);
-    const position = ref<{ top: number; left: number } | null>(null);
-    let restoreFocus: HTMLElement | null = null;
-
-    const place = () => {
-      const anchor = anchorEl.value;
-
-      if (!anchor) {
-        return;
-      }
-
-      const rect = anchor.getBoundingClientRect();
-      const width = props.panelWidth ?? panelEl.value?.offsetWidth ?? 0;
-      const left = props.placement === "bottom-end" ? rect.right - width : rect.left;
-      const top = rect.bottom + 6;
-
-      position.value = {
-        top,
-        left: Math.max(6, Math.min(left, window.innerWidth - width - 6))
-      };
-    };
-
-    const handlePointerdown = (event: PointerEvent) => {
-      const target = event.target as Node;
-
-      if (!anchorEl.value?.contains(target) && !panelEl.value?.contains(target)) {
-        open.value = false;
-      }
-    };
-
-    const handleKeydown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        open.value = false;
-      }
-    };
-
-    watch(open, isOpen => {
-      if (isOpen) {
-        restoreFocus = document.activeElement as HTMLElement | null;
-        document.addEventListener("pointerdown", handlePointerdown, true);
-        document.addEventListener("keydown", handleKeydown, true);
-        window.addEventListener("resize", place);
-        window.addEventListener("scroll", place, true);
-        nextTick(() => {
-          place();
-          panelEl.value?.focus();
-        });
-      } else {
-        document.removeEventListener("pointerdown", handlePointerdown, true);
-        document.removeEventListener("keydown", handleKeydown, true);
-        window.removeEventListener("resize", place);
-        window.removeEventListener("scroll", place, true);
-        position.value = null;
-
-        if (restoreFocus?.isConnected) {
-          restoreFocus.focus();
-        }
-
-        restoreFocus = null;
-      }
-    });
-
-    onScopeDispose(() => {
-      document.removeEventListener("pointerdown", handlePointerdown, true);
-      document.removeEventListener("keydown", handleKeydown, true);
-      window.removeEventListener("resize", place);
-      window.removeEventListener("scroll", place, true);
-    });
 
     const toggle = () => {
       open.value = !open.value;
@@ -871,46 +797,65 @@ export const LedgerPopover = defineComponent({
 
     return () =>
       h(
-        "span",
+        PopoverRoot,
         {
-          ref: anchorEl,
-          class: "ledger-popover",
-          "aria-expanded": open.value,
-          "aria-haspopup": "dialog",
-          "data-open": open.value || undefined,
-          onClick: toggle
+          open: open.value,
+          "onUpdate:open": (value: boolean) => {
+            open.value = value;
+          }
         },
-        [
-          // The trigger. Scoped so a consumer could read the state; the anchor's own click
-          // handler already toggles, so wiring a button trigger needs nothing from the scope.
-          slots.default?.({ open: open.value, toggle }),
-
-          open.value
-            && h(
-              Teleport,
-              { to: "body" },
-              h(
-                "div",
+        {
+          default: () => [
+            h(PopoverAnchor, { asChild: true }, {
+              default: () => h(
+                "span",
                 {
-                  ref: panelEl,
+                  ref: anchorEl,
+                  class: "ledger-popover",
+                  "aria-expanded": open.value,
+                  "aria-haspopup": "dialog",
+                  "data-open": open.value || undefined,
+                  onClick: toggle
+                },
+                slots.default?.({ open: open.value, toggle })
+              )
+            }),
+            h(PopoverPortal, null, {
+              default: () => h(
+                PopoverContent,
+                {
                   class: "ledger-popover-panel",
-                  role: "dialog",
-                  tabindex: -1,
+                  side: "bottom",
+                  align: props.placement === "bottom-end" ? "end" : "start",
+                  sideOffset: 6,
+                  // The anchor's own click toggles (a second trigger click closes); reka must
+                  // not race it with an outside-dismiss on the same pointerdown.
+                  onPointerDownOutside: (event: Event) => {
+                    if (anchorEl.value?.contains(event.target as Node)) {
+                      event.preventDefault();
+                    }
+                  },
+                  onCloseAutoFocus: (event: Event) => {
+                    // Focus returns to the trigger the way the hand-rolled version returned it
+                    // to the previously-focused element — there is no PopoverTrigger here for
+                    // reka to restore to.
+                    event.preventDefault();
+
+                    const focusTarget = anchorEl.value?.querySelector<HTMLElement>("button") ?? anchorEl.value;
+
+                    focusTarget?.focus();
+                  },
                   style: {
-                    position: "fixed",
-                    top: `${position.value?.top ?? 0}px`,
-                    left: `${position.value?.left ?? 0}px`,
                     width: props.panelWidth !== undefined ? `${props.panelWidth}px` : undefined,
                     maxHeight: props.panelMaxHeight,
-                    // Unplaced for one frame: position resolves in the tick after mount.
-                    visibility: position.value === null ? "hidden" : undefined,
                     ...props.panelStyle
                   }
                 },
                 slots.content?.()
               )
-            )
-        ]
+            })
+          ]
+        }
       );
   }
 });
