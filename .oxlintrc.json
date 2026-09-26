@@ -22,6 +22,7 @@
       "files": ["**/*.test.ts", "vitest.setup.ts"],
       "rules": {
         "vitest/require-mock-type-parameters": "off",
+        "vitest/warn-todo": "off",
         "eslint/no-underscore-dangle": "off"
       }
     }
