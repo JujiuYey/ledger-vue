@@ -36,6 +36,7 @@
     --ledger-primary-color-light: #e7f5ff;
     --ledger-primary-color-light-hover: #d0ebff;
     --ledger-radius-default: 4px;
+    --ledger-scrollbar-thumb: rgb(0 0 0 / 40%);
     --ledger-shadow-md:
       0 0.25rem 0.75rem rgb(0 0 0 / 8%),
       0 0.0625rem 0.1875rem rgb(0 0 0 / 5%);
@@ -57,6 +58,7 @@
       --ledger-color-gray-light: #2c2e33;
       --ledger-color-red-light: #3d1a21;
       --ledger-color-red-light-color: #ff8787;
+      --ledger-scrollbar-thumb: rgb(255 255 255 / 40%);
       --ledger-primary-color-light: rgb(34 139 230 / 15%);
       --ledger-primary-color-light-hover: rgb(34 139 230 / 25%);
       --ledger-shadow-md:
@@ -74,6 +76,7 @@
     --ledger-color-gray-light: #2c2e33;
     --ledger-color-red-light: #3d1a21;
     --ledger-color-red-light-color: #ff8787;
+    --ledger-scrollbar-thumb: rgb(255 255 255 / 40%);
     --ledger-primary-color-light: rgb(34 139 230 / 15%);
     --ledger-primary-color-light-hover: rgb(34 139 230 / 25%);
     --ledger-shadow-md:
@@ -91,6 +94,7 @@
     --ledger-color-placeholder: #adb5bd;
     --ledger-color-red-light: #fff0f6;
     --ledger-color-red-light-color: #c2255c;
+    --ledger-scrollbar-thumb: rgb(0 0 0 / 40%);
     --ledger-primary-color-light: #e7f5ff;
     --ledger-primary-color-light-hover: #d0ebff;
     --ledger-shadow-md:
@@ -198,8 +202,10 @@
      transparent tracks overlaying the edges, inset from the corner, pointer-driven by reka
      (thumb sized in px by reka's own observers). Hidden until the pointer enters the wrapper
      (the hover model; see data-table.vue for why the reveal rides CSS here). The reveal
-     switches DISPLAY, Mantine's own mechanism — an animated property (opacity) would stay
-     frozen at its start value wherever animations are suspended (occluded webviews). */
+     switches VISIBILITY, not display or opacity: a display:none bar measures clientWidth 0,
+     and reka clamps every thumb to its 18px minimum; an opacity transition freezes at its
+     start value wherever animations are suspended (occluded webviews). visibility hides
+     without animating and keeps the bars laid out — measurable at all times. */
   .ledger-scrollbar {
     box-sizing: border-box;
     display: flex;
@@ -207,11 +213,14 @@
     background-color: transparent;
     user-select: none;
     touch-action: none;
+    visibility: hidden;
+    pointer-events: none;
     transition: background-color 150ms ease;
   }
 
-  .ledger-scroller:not(:hover) .ledger-scrollbar {
-    display: none;
+  .ledger-scroller:hover .ledger-scrollbar {
+    visibility: visible;
+    pointer-events: auto;
   }
 
   .ledger-scrollbar[data-orientation="vertical"] {
@@ -240,7 +249,9 @@
     flex: 1;
     overflow: hidden;
     border-radius: var(--ledger-scrollbar-size);
-    background-color: color-mix(in srgb, var(--ledger-color-text) 40%, transparent);
+    /* Mantine's thumb fill: rgba(0,0,0,.4) light / rgba(255,255,255,.4) dark, token-carried
+       through the scheme matrix above. */
+    background-color: var(--ledger-scrollbar-thumb);
   }
 
   /* The corner is never seen (Mantine keeps it opacity 0): it exists to measure the corner

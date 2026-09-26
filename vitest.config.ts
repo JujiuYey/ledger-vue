@@ -21,7 +21,9 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: ["./vitest.setup.ts"],
-    include: ["packages/*/src/**/*.test.{ts,tsx}"],
+    // The root-level guard specs read files through node:fs, so they live beside the configs
+    // (the package tsconfigs carry `types: []` — no node globals in package sources).
+    include: ["packages/*/src/**/*.test.{ts,tsx}", "*.test.ts"],
     clearMocks: true
   }
 });
