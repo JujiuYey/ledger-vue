@@ -767,6 +767,31 @@ describe("DataTable", () => {
     expect(bars.length).toBe(2);
     expect(bars.map(bar => bar.dataset.orientation).sort()).toEqual(["horizontal", "vertical"]);
 
+    // jsdom lays nothing out — the axis-presence signal exists only where the test supplies
+    // the metrics. Both axes overflowing → neither bar carries data-hidden.
+    Object.defineProperty(viewport, "scrollWidth", { value: 2000, configurable: true });
+    Object.defineProperty(viewport, "clientWidth", { value: 800, configurable: true });
+    Object.defineProperty(viewport, "scrollHeight", { value: 2000, configurable: true });
+    Object.defineProperty(viewport, "clientHeight", { value: 600, configurable: true });
+
+    await viewport?.dispatchEvent(new Event("scroll", { bubbles: true }));
+    await tick();
+
+    for (const bar of bars) {
+      expect(Object.hasOwn(bar.dataset, "hidden")).toBe(false);
+    }
+
+    // No horizontal overflow → the X bar stands down while the Y bar stays.
+    Object.defineProperty(viewport, "scrollWidth", { value: 800, configurable: true });
+
+    await viewport?.dispatchEvent(new Event("scroll", { bubbles: true }));
+    await tick();
+
+    const byOrientation = new Map(bars.map(bar => [bar.dataset.orientation, bar]));
+
+    expect(Object.hasOwn(byOrientation.get("horizontal")!.dataset, "hidden")).toBe(true);
+    expect(Object.hasOwn(byOrientation.get("vertical")!.dataset, "hidden")).toBe(false);
+
     for (const bar of bars) {
       expect(bar.parentElement).toBe(wrapper);
       expect(viewport?.contains(bar)).toBe(false);

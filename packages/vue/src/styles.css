@@ -223,6 +223,15 @@
     pointer-events: auto;
   }
 
+  /* Axis presence: a bar whose direction cannot scroll stays gone even under the pointer —
+     Mantine's data-hidden semantics, switched through visibility so its sibling stays
+     measurable. Scoped one class higher than the bare bar so it out-ranks the :hover reveal
+     (a pseudo-class counts as a class: the hover arm is (0,3,0)). */
+  .ledger-scroller .ledger-scrollbar[data-hidden] {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
   .ledger-scrollbar[data-orientation="vertical"] {
     width: var(--ledger-scrollbar-size);
     inset-block: 0 var(--reka-scroll-area-corner-width);

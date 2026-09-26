@@ -899,10 +899,55 @@ watch([headerViewportRef, footerViewportRef], (_values, _previous, onCleanup) =>
   });
 });
 
+/**
+ * Per-axis scrollbar presence, Mantine's own signal: a bar exists only where the viewport
+ * truly overflows (`scrollWidth > clientWidth`, integer comparison — sub-pixel table widths
+ * otherwise read as hairline overflow and reka keeps a full-looking thumb mounted on an axis
+ * that cannot scroll). Read on scroll and on the viewport's box changes.
+ */
+const scrollbarAxes = ref({ x: false, y: false });
+
+const readScrollbarAxes = () => {
+  const element = viewportRef.value;
+
+  if (!element) {
+    return;
+  }
+
+  const next = {
+    x: element.scrollWidth - element.clientWidth > 0,
+    y: element.scrollHeight - element.clientHeight > 0
+  };
+
+  if (next.x !== scrollbarAxes.value.x || next.y !== scrollbarAxes.value.y) {
+    scrollbarAxes.value = next;
+  }
+};
+
+watch(viewportRef, (element, _previous, onCleanup) => {
+  if (!element || typeof ResizeObserver === "undefined") {
+    return;
+  }
+
+  readScrollbarAxes();
+
+  const observer = new ResizeObserver(readScrollbarAxes);
+
+  observer.observe(element);
+  // Content growth (rows loading, the width engine sizing the table) never resizes the
+  // viewport's own box — reka watches the content element for its sizes for the same reason.
+  if (element.firstElementChild instanceof HTMLElement) {
+    observer.observe(element.firstElementChild);
+  }
+
+  onCleanup(() => observer.disconnect());
+}, { immediate: true, flush: "post" });
+
 const handleScrollPositionChange = () => {
   mirrorBodyScrollLeft();
   maybeFireEndReached();
   updateScrollEdges();
+  readScrollbarAxes();
 };
 
 /* ---- imperative handle ---- */
@@ -1592,12 +1637,21 @@ ContentHost.props = ["source"];
 
             <!-- Siblings of the viewport, anchored on the root wrapper — an absolutely
               positioned child of the scrolling div belongs to the scrolled coordinate space
-              and rides out of view on scroll. -->
-            <ScrollAreaScrollbar class="ledger-scrollbar" orientation="horizontal">
+              and rides out of view on scroll. data-hidden carries the axis-presence signal
+              (no overflow on that axis → no bar), Mantine's own attribute. -->
+            <ScrollAreaScrollbar
+              class="ledger-scrollbar"
+              orientation="horizontal"
+              :data-hidden="!scrollbarAxes.x || undefined"
+            >
               <ScrollAreaThumb class="ledger-scrollbar-thumb" />
             </ScrollAreaScrollbar>
 
-            <ScrollAreaScrollbar class="ledger-scrollbar" orientation="vertical">
+            <ScrollAreaScrollbar
+              class="ledger-scrollbar"
+              orientation="vertical"
+              :data-hidden="!scrollbarAxes.y || undefined"
+            >
               <ScrollAreaThumb class="ledger-scrollbar-thumb" />
             </ScrollAreaScrollbar>
 
