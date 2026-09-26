@@ -16,6 +16,26 @@
  */
 
 @layer ledger {
+  @media (prefers-color-scheme: dark) {
+    /* html-level only: the overrides reach .ledger-root and teleported panels by INHERITANCE.
+       (A `.ledger-root:not([data-color-scheme=…])` arm would match the root div whenever the
+       attribute lives on <html>, pinning every table to the OS scheme.) */
+    html:not([data-color-scheme="light"]) {
+      --ledger-color-body: #1a1b1e;
+      --ledger-color-default-border: #373a40;
+      --ledger-color-default-hover: rgb(255 255 255 / 6%);
+      --ledger-color-gray-light: #2c2e33;
+      --ledger-color-red-light: #3d1a21;
+      --ledger-color-red-light-color: #ff8787;
+      --ledger-scrollbar-thumb: rgb(255 255 255 / 40%);
+      --ledger-primary-color-light: rgb(34 139 230 / 15%);
+      --ledger-primary-color-light-hover: rgb(34 139 230 / 25%);
+      --ledger-shadow-md:
+        0 0.25rem 0.75rem rgb(0 0 0 / 35%),
+        0 0.0625rem 0.1875rem rgb(0 0 0 / 25%);
+    }
+  }
+
   /* ------------------------------------------------------------------------------------------
    * Design tokens (Vue edition): the palette and metrics the rules below consume. Values
    * follow the classic Mantine default theme so the port is visually drop-in.
@@ -45,26 +65,6 @@
     --ledger-spacing-md: 16px;
     --ledger-spacing-xl: 32px;
     --ledger-z-index-popover: 300;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    /* html-level only: the overrides reach .ledger-root and teleported panels by INHERITANCE.
-       (A `.ledger-root:not([data-color-scheme=…])` arm would match the root div whenever the
-       attribute lives on <html>, pinning every table to the OS scheme.) */
-    html:not([data-color-scheme="light"]) {
-      --ledger-color-body: #1a1b1e;
-      --ledger-color-default-border: #373a40;
-      --ledger-color-default-hover: rgb(255 255 255 / 6%);
-      --ledger-color-gray-light: #2c2e33;
-      --ledger-color-red-light: #3d1a21;
-      --ledger-color-red-light-color: #ff8787;
-      --ledger-scrollbar-thumb: rgb(255 255 255 / 40%);
-      --ledger-primary-color-light: rgb(34 139 230 / 15%);
-      --ledger-primary-color-light-hover: rgb(34 139 230 / 25%);
-      --ledger-shadow-md:
-        0 0.25rem 0.75rem rgb(0 0 0 / 35%),
-        0 0.0625rem 0.1875rem rgb(0 0 0 / 25%);
-    }
   }
 
   html[data-color-scheme="dark"],
@@ -124,8 +124,8 @@
     width: 1px;
     height: 1px;
     overflow: hidden;
-    clip-path: inset(50%);
     white-space: nowrap;
+    clip-path: inset(50%);
   }
 
   /* The body scroller is a native overflow region in this edition — see .ledger-scroller below. */
@@ -182,12 +182,11 @@
      coordinate space and rides out of view on scroll. Same seat `.ledger-scroller` holds in
      the React edition. */
   .ledger-scroller {
+    /* The floating scrollbar scale (Mantine's --scrollarea-scrollbar-size twin; 0.75rem). */
+    --ledger-scrollbar-size: 12px;
     position: relative;
     flex: 1 1 auto;
     min-height: 0;
-
-    /* The floating scrollbar scale (Mantine's --scrollarea-scrollbar-size twin; 0.75rem). */
-    --ledger-scrollbar-size: 12px;
   }
 
   /* The reka Viewport is the scrolling div (inline overflow from reka; native bars hidden by
@@ -209,12 +208,12 @@
   .ledger-scrollbar {
     box-sizing: border-box;
     display: flex;
-    padding: calc(var(--ledger-scrollbar-size) / 5);
-    background-color: transparent;
-    user-select: none;
-    touch-action: none;
     visibility: hidden;
+    padding: calc(var(--ledger-scrollbar-size) / 5);
     pointer-events: none;
+    touch-action: none;
+    user-select: none;
+    background-color: transparent;
     transition: background-color 150ms ease;
   }
 
@@ -233,16 +232,16 @@
   }
 
   .ledger-scrollbar[data-orientation="vertical"] {
-    width: var(--ledger-scrollbar-size);
     inset-block: 0 var(--reka-scroll-area-corner-width);
     inset-inline-end: 0;
+    width: var(--ledger-scrollbar-size);
   }
 
   .ledger-scrollbar[data-orientation="horizontal"] {
-    height: var(--ledger-scrollbar-size);
-    flex-direction: column;
     inset-block-end: 0;
     inset-inline: 0 var(--reka-scroll-area-corner-width);
+    flex-direction: column;
+    height: var(--ledger-scrollbar-size);
   }
 
   /* Scrollbars (the ScrollArea children carrying data-orientation) are transient chrome and
@@ -257,21 +256,22 @@
     position: relative;
     flex: 1;
     overflow: hidden;
-    border-radius: var(--ledger-scrollbar-size);
+
     /* Mantine's thumb fill: rgba(0,0,0,.4) light / rgba(255,255,255,.4) dark, token-carried
        through the scheme matrix above. */
     background-color: var(--ledger-scrollbar-thumb);
+    border-radius: var(--ledger-scrollbar-size);
   }
 
   /* The corner is never seen (Mantine keeps it opacity 0): it exists to measure the corner
      box that reka publishes as --reka-scroll-area-corner-width/height and the bars inset by. */
   .ledger-scroll-corner {
     position: absolute;
-    inset-inline-end: 0;
     inset-block-end: 0;
+    inset-inline-end: 0;
     display: block;
-    opacity: 0;
     background-color: transparent;
+    opacity: 0;
   }
 
   /* An empty (or errored-out) body has no rows to give the region height — keep a readable
@@ -949,6 +949,7 @@
 
   /* Long titles ellipse rather than wrap — a two-line row among one-line rows reads as a break
      in the list. */
+
   /* The original rule targeted the Mantine checkbox's TEXT label (a nested <label>); here the
      LedgerCheckbox root IS a <label> and this selector used to hit it with display: block —
      killing the flex gap and baseline-riding the box above the text. Ellipsis lives on
@@ -1135,6 +1136,18 @@
  * pipeline as the table itself.
  */
 @layer ledger {
+  @keyframes ledger-spinner-spin {
+    to {
+      rotate: 360deg;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ledger-select-chevron {
+      transition: none;
+    }
+  }
+
   /* Size scale: defaults (no attribute) are `sm`; every control root publishes the custom
      properties its subtree consumes. --ledger-text-size is the bar's text, --ledger-control-* the
      controls'. */
@@ -1215,8 +1228,8 @@
     font-size: var(--ledger-control-font-size);
     font-weight: 500;
     color: inherit;
-    cursor: pointer;
     white-space: nowrap;
+    cursor: pointer;
     user-select: none;
     background-color: var(--ledger-color-body);
     border: 1px solid var(--ledger-color-default-border);
@@ -1321,15 +1334,15 @@
     height: 1px;
     margin: 0;
     overflow: hidden;
-    clip-path: inset(50%);
     white-space: nowrap;
+    clip-path: inset(50%);
   }
 
   .ledger-checkbox-box {
     position: relative;
+    box-sizing: border-box;
     display: inline-block;
     flex: none;
-    box-sizing: border-box;
     width: var(--ledger-checkbox-size);
     height: var(--ledger-checkbox-size);
     background-color: var(--ledger-color-body);
@@ -1339,15 +1352,15 @@
 
   .ledger-checkbox-box::after {
     position: absolute;
-    inset-inline-start: 25%;
     inset-block-start: 12%;
+    inset-inline-start: 25%;
     width: 34%;
     height: 56%;
     content: "";
-    rotate: 45deg;
+    border-block-end: 2px solid #ffffff;
+    border-inline-end: 2px solid #ffffff;
     opacity: 0;
-    border-block-end: 2px solid #fff;
-    border-inline-end: 2px solid #fff;
+    rotate: 45deg;
   }
 
   .ledger-checkbox-input:checked + .ledger-checkbox-box,
@@ -1369,9 +1382,9 @@
     inset: calc(50% - 1px) 15%;
     width: auto;
     height: 2px;
-    rotate: none;
+    background-color: #ffffff;
     border: 0;
-    background-color: #fff;
+    rotate: none;
   }
 
   .ledger-checkbox-input:focus-visible + .ledger-checkbox-box {
@@ -1383,18 +1396,19 @@
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+
     /* The text line box otherwise runs ~1px taller than the box and the flex-centered pair
        reads half a pixel off. Same height = exact centering. */
     line-height: var(--ledger-checkbox-size);
+    white-space: nowrap;
   }
 
   /* ------------------------------------------------------------------------------------------
    * Inputs
    * ------------------------------------------------------------------------------------------ */
   .ledger-input {
-    display: inline-block;
     box-sizing: border-box;
+    display: inline-block;
     min-width: 0;
     height: var(--ledger-control-height);
     padding-inline: var(--ledger-control-pad-inline);
@@ -1422,6 +1436,11 @@
 
   .ledger-input[type="number"] {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* An input inside a flex row (the text filter's wrapper) stretches to fill it. */
+  .ledger-filter-text .ledger-input {
+    flex: 1 1 auto;
   }
 
   /* ------------------------------------------------------------------------------------------
@@ -1491,8 +1510,8 @@
 
   .ledger-select-list {
     position: absolute;
-    inset-inline-start: 0;
     inset-block-start: calc(100% + 4px);
+    inset-inline-start: 0;
     z-index: var(--ledger-z-index-popover);
     min-width: 100%;
     max-height: 280px;
@@ -1518,8 +1537,8 @@
     min-height: 28px;
     padding: 4px var(--ledger-control-pad-inline);
     font-size: var(--ledger-control-font-size);
-    cursor: pointer;
     white-space: nowrap;
+    cursor: pointer;
   }
 
   .ledger-select-option[data-active] {
@@ -1572,12 +1591,6 @@
     animation: ledger-spinner-spin 600ms linear infinite;
   }
 
-  @keyframes ledger-spinner-spin {
-    to {
-      rotate: 360deg;
-    }
-  }
-
   /* ------------------------------------------------------------------------------------------
    * Search — the shell carries the input chrome; the input inside is bare.
    * ------------------------------------------------------------------------------------------ */
@@ -1586,8 +1599,8 @@
     display: inline-flex;
     gap: 6px;
     align-items: center;
-    height: var(--ledger-control-height);
     min-width: 0;
+    height: var(--ledger-control-height);
     padding-inline: var(--ledger-control-pad-inline);
     font-size: var(--ledger-control-font-size);
     background-color: var(--ledger-color-body);
@@ -1787,24 +1800,10 @@
     min-width: 0;
   }
 
-  .ledger-filter-text .ledger-input {
-    flex: 1 1 auto;
-  }
-
   .ledger-filter-dates {
     display: flex;
     flex-direction: column;
     gap: 8px;
-  }
-
-  .ledger-filter-dates .ledger-input {
-    min-width: 0;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .ledger-select-chevron {
-      transition: none;
-    }
   }
 }
 
@@ -1850,8 +1849,8 @@
     outline-offset: -2px;
   }
 
-  .ledger-row-drag-cell button:hover:not([aria-disabled]),
-  .ledger-expander-cell button:hover {
+  .ledger-expander-cell button:hover,
+  .ledger-row-drag-cell button:hover:not([aria-disabled]) {
     background-color: var(--ledger-color-default-hover);
   }
 }
@@ -1888,9 +1887,9 @@
   }
 
   .ledger-columns-panel-controls .ledger-input {
+    width: 56px;
     height: 24px;
     min-height: 24px;
-    width: 56px;
     padding-block: 0;
     text-align: end;
   }

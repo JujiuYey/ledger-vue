@@ -45,7 +45,15 @@ body,
 
 body {
   margin: 0;
-  font-family: -apple-system, "Segoe UI", "Noto Sans", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  font-family:
+    -apple-system,
+    "Segoe UI",
+    "Noto Sans",
+    "Helvetica Neue",
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: var(--pg-text);
@@ -86,8 +94,8 @@ body {
 
 .pg-theme-toggle {
   display: inline-flex;
-  margin-left: auto;
   padding: 7px;
+  margin-left: auto;
   color: var(--pg-text);
   cursor: pointer;
   background: none;
@@ -101,8 +109,8 @@ body {
 
 .pg-lang {
   display: inline-flex;
-  margin-left: auto;
   padding: 2px;
+  margin-left: auto;
   background: rgb(0 0 0 / 5%);
   border-radius: 8px;
 }
@@ -198,13 +206,13 @@ body {
   background: var(--pg-accent-light);
 }
 
+.pg-nav-label {
+  font-size: 13px;
+}
+
 .pg-nav-item[data-active] .pg-nav-label {
   font-weight: 600;
   color: var(--pg-accent);
-}
-
-.pg-nav-label {
-  font-size: 13px;
 }
 
 .pg-nav-description {
@@ -330,8 +338,8 @@ body {
 }
 
 .pg-button:disabled {
-  cursor: not-allowed;
   color: var(--pg-dimmed);
+  cursor: not-allowed;
 }
 
 .pg-code {
@@ -344,8 +352,8 @@ body {
 
 .pg-note {
   max-width: 44rem;
-  margin: 0;
   padding: 8px 12px;
+  margin: 0;
   font-size: 12.5px;
   color: #495057;
   background: var(--pg-code-bg);
@@ -388,10 +396,10 @@ body {
 }
 
 .pg-switch input {
-  appearance: none;
   width: 34px;
   height: 20px;
   margin: 0;
+  appearance: none;
   cursor: pointer;
   background: #ced4da;
   border-radius: 999px;
@@ -405,7 +413,7 @@ body {
   width: 14px;
   height: 14px;
   content: "";
-  background: #fff;
+  background: #ffffff;
   border-radius: 50%;
   transition: translate 120ms ease;
 }
@@ -427,16 +435,16 @@ body {
  * Mobile: the navbar collapses behind the burger below 48em (the React edition's xs breakpoint).
  * ---------------------------------------------------------------------------------------------- */
 
-@media (max-width: 47.99em) {
+@media (width <= 47.99em) {
   .pg-burger {
     display: inline-flex;
   }
 
   .pg-nav {
     position: fixed;
-    z-index: 100;
     inset-block: var(--pg-header-offset) 0;
     inset-inline-start: 0;
+    z-index: 100;
     display: none;
     box-shadow: 4px 0 24px rgb(0 0 0 / 10%);
   }

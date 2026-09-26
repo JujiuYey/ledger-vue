@@ -438,5 +438,5 @@ function facetedOptions(column: Column<any, unknown>): string[] {
     }
   }
 
-  return [...new Set(values)].sort().slice(0, FACETED_OPTIONS_CAP);
+  return [...new Set(values)].toSorted().slice(0, FACETED_OPTIONS_CAP);
 }

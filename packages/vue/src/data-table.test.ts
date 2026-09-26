@@ -263,10 +263,10 @@ describe("DataTable", () => {
     await viewport?.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Enter" }));
     await tick();
 
-    expect((onRowActivate.mock.calls[0]?.[0] as { id: string }).id).toBe("1");
+    expect((onRowActivate.mock.calls[0]![0] as { id: string }).id).toBe("1");
     // Enter is not a click: the pointer-only handler must never see a synthesized MouseEvent.
     expect(onRowClick).not.toHaveBeenCalled();
-    expect((onRowActivate.mock.calls[0]?.[1] as { type: string }).type).toBe("keydown");
+    expect((onRowActivate.mock.calls[0]![1] as { type: string }).type).toBe("keydown");
   });
 
   it("describes the row-navigation focus stop and speaks each move of the current row", async () => {
@@ -765,7 +765,7 @@ describe("DataTable", () => {
     const bars = all(".ledger-scrollbar");
 
     expect(bars.length).toBe(2);
-    expect(bars.map(bar => bar.dataset.orientation).sort()).toEqual(["horizontal", "vertical"]);
+    expect(bars.map(bar => bar.dataset.orientation).toSorted()).toEqual(["horizontal", "vertical"]);
 
     // jsdom lays nothing out — the axis-presence signal exists only where the test supplies
     // the metrics. Both axes overflowing → neither bar carries data-hidden.

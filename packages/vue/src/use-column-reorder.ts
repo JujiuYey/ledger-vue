@@ -149,7 +149,7 @@ export function useColumnReorder<TData extends RowData>(table: TableInstance<TDa
             return;
           }
 
-          const { started, target, columnId } = session;
+          const { started, target, columnId: draggedId } = session;
 
           session.cleanup();
           session = null;
@@ -158,7 +158,7 @@ export function useColumnReorder<TData extends RowData>(table: TableInstance<TDa
             suppressClick = true;
 
             if (commit && target) {
-              commitReorder(columnId, target);
+              commitReorder(draggedId, target);
             }
           }
 

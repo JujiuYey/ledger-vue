@@ -95,7 +95,7 @@ export function useResponsiveColumns<TData extends RowData>(
     const used = new Set<string>();
     collectBreakpoints(toValue(columns), used);
 
-    return used.size === 0 ? "" : JSON.stringify([...used].sort());
+    return used.size === 0 ? "" : JSON.stringify([...used].toSorted());
   });
 
   const matches = ref<Record<string, boolean>>({});

@@ -61,7 +61,7 @@ const PaginationBarCore = defineComponent({
     // from its options renders blank. Always de-duplicated and ascending, so the list a reader
     // sees does not depend on how the current size got there.
     const sizeOptions = computed(() =>
-      [...new Set([...props.pageSizeOptions, pagination.value.pageSize])].sort((left: number, right: number) => left - right)
+      [...new Set([...props.pageSizeOptions, pagination.value.pageSize])].toSorted((left: number, right: number) => left - right)
     );
 
     return () => {

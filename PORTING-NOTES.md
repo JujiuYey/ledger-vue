@@ -82,6 +82,45 @@ is English. Single-line Conventional Commits.
 - `colorScheme?: "light" | "dark"` prop on `<DataTable>` renders `data-color-scheme` on the
   root (defaults to following the OS).
 
+## Engineering gates (adopted from the React edition)
+
+The React repo's gate set, adapted where Vue demands it:
+
+- `pnpm lint` / `lint:check` — **oxlint, not ESLint**: the sealed `@coldsmirk/eslint-config` (0.8.x)
+  has no Vue axis, and composing vue-eslint-plugin locally under a sealed config was judged worse
+  than a native linter that reads `.ts` and `.vue` script blocks out of the box (`.vue` templates
+  stay unlinted; `vue-tsc` typechecks their expressions). `.oxlintrc.json`: typescript / unicorn /
+  import / jsdoc / vitest plugins, correctness + suspicious as errors. Turned off on purpose:
+  `import/no-named-as-default` (`import clsx from "clsx"` mirrors the React source), 
+  `import/no-unassigned-import` (CSS side-effect imports are the documented pattern),
+  `unicorn/consistent-function-scoping` (colocation mirrors the ported file structure), and in
+  tests/setup only `vitest/require-mock-type-parameters` + `eslint/no-underscore-dangle`
+  (`__testTable` global). `no-shadow` allows `_`.
+- `pnpm lint:css` / `lint:css:check` — Stylelint on the sealed `@coldsmirk/stylelint-config`
+  (plain CSS; same glob as the React edition). `.vue` `<style>` blocks are not linted — parity:
+  the React edition has none either.
+- `pnpm typecheck` — root `tsc` (repo-level files, including `scripts/`) + per-package `vue-tsc`.
+- `pnpm check:package` — publint + attw; `packages/vue/.attw.json` mirrors the React edition's
+  (skips the `./styles.css` entrypoint, profile `node16`).
+- husky: commit-msg → commitlint; pre-commit → both lint checks (oxlint lints the whole repo in
+  milliseconds, so there is no lint-staged); pre-push → typecheck + test.
+- `pnpm version:patch|minor|major` — lockstep bump via `scripts/version.ts`, verbatim.
+- `.github/workflows/ci.yml` — the same six-step gate; inert until the repo gains a remote.
+  The release/pages workflows wait for a publish decision.
+
+Packaging fixes the new gates exposed (all in `packages/vue`):
+
+- The lib build externalized every dependency EXCEPT `reka-ui` — it was silently bundled into
+  `dist` while also declared a runtime dependency. Now external (`dist/index.js` imports it).
+- Declarations are now BUNDLED (vite-plugin-dts@4 `rollupTypes` + api-extractor): one
+  self-contained `index.d.ts` / `locales.d.ts` per entry. The per-file `vue-tsc` emit keeps
+  extensionless relative imports, which fail attw's node16 resolutions (the React edition gets
+  the bundled shape from tsdown). `.d.cts` twins are copied for the `require` conditions —
+  `vue-tsc` only emits `.d.ts`, and publint checks both.
+- `cssCodeSplit` moved out of the `lib` options (Vite 7's types reject it there).
+- Root `@types/node` added: the root `tsc` run was declared by the root tsconfig's comment but
+  the `typecheck` script never actually executed it before.
+
 ## File → agent ownership (do not edit files you don't own)
 
 - A (logic): `persist.ts`, `edit-meta.ts`, `use-committed-table.ts`, `use-row-commands.ts`,

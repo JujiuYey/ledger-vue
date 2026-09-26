@@ -10,29 +10,48 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r run build",
+    "check:package": "pnpm -r --filter \"@coldsmirk/*\" exec publint && pnpm -r --filter \"@coldsmirk/*\" exec attw --pack .",
     "clean": "pnpm -r run clean",
+    "lint": "oxlint --fix .",
+    "lint:check": "oxlint .",
+    "lint:css": "stylelint --fix \"packages/*/src/**/*.css\"",
+    "lint:css:check": "stylelint \"packages/*/src/**/*.css\"",
+    "prepare": "husky",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "typecheck": "pnpm -r run typecheck",
+    "typecheck": "tsc --noEmit -p tsconfig.json && pnpm -r run typecheck",
+    "version:major": "jiti scripts/version.ts major",
+    "version:minor": "jiti scripts/version.ts minor",
+    "version:patch": "jiti scripts/version.ts patch",
     "dev": "pnpm --filter ledger-vue-playground dev",
     "playground:build": "pnpm --filter ledger-vue-playground build"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
+    "@coldsmirk/commitlint-config": "^0.8.2",
+    "@coldsmirk/stylelint-config": "^0.8.2",
+    "@commitlint/cli": "^21.2.3",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/vue": "^8.1.0",
+    "@types/node": "^26.6.2",
     "@vitejs/plugin-vue": "^6.0.0",
     "@vitest/coverage-v8": "^4.0.0",
     "@vue/test-utils": "^2.4.6",
+    "husky": "^9.1.7",
+    "jiti": "^2.7.0",
     "jsdom": "^26.0.0",
+    "oxlint": "^1.85.0",
+    "publint": "^0.3.24",
+    "stylelint": "^17.15.0",
     "typescript": "^5.8.0",
     "vite": "^7.0.0",
     "vitest": "^4.0.0",
     "vue": "^3.5.0",
-    "vue-tsc": "^3.0.0",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/vue": "^8.1.0"
+    "vue-tsc": "^3.0.0"
   },
+  "packageManager": "pnpm@11.6.0",
   "engines": {
     "node": ">=24"
-  },
-  "dependencies": {}
+  }
 }
