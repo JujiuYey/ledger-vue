@@ -28,6 +28,7 @@
       --ledger-color-red-light: #3d1a21;
       --ledger-color-red-light-color: #ff8787;
       --ledger-scrollbar-thumb: rgb(255 255 255 / 40%);
+      --ledger-scrollbar-thumb-active: rgb(255 255 255 / 50%);
       --ledger-primary-color-light: rgb(34 139 230 / 15%);
       --ledger-primary-color-light-hover: rgb(34 139 230 / 25%);
       --ledger-shadow-md:
@@ -57,6 +58,7 @@
     --ledger-primary-color-light-hover: #d0ebff;
     --ledger-radius-default: 4px;
     --ledger-scrollbar-thumb: rgb(0 0 0 / 40%);
+    --ledger-scrollbar-thumb-active: rgb(0 0 0 / 50%);
     --ledger-shadow-md:
       0 0.25rem 0.75rem rgb(0 0 0 / 8%),
       0 0.0625rem 0.1875rem rgb(0 0 0 / 5%);
@@ -77,6 +79,7 @@
     --ledger-color-red-light: #3d1a21;
     --ledger-color-red-light-color: #ff8787;
     --ledger-scrollbar-thumb: rgb(255 255 255 / 40%);
+    --ledger-scrollbar-thumb-active: rgb(255 255 255 / 50%);
     --ledger-primary-color-light: rgb(34 139 230 / 15%);
     --ledger-primary-color-light-hover: rgb(34 139 230 / 25%);
     --ledger-shadow-md:
@@ -95,6 +98,7 @@
     --ledger-color-red-light: #fff0f6;
     --ledger-color-red-light-color: #c2255c;
     --ledger-scrollbar-thumb: rgb(0 0 0 / 40%);
+    --ledger-scrollbar-thumb-active: rgb(0 0 0 / 50%);
     --ledger-primary-color-light: #e7f5ff;
     --ledger-primary-color-light-hover: #d0ebff;
     --ledger-shadow-md:
@@ -261,6 +265,27 @@
        through the scheme matrix above. */
     background-color: var(--ledger-scrollbar-thumb);
     border-radius: var(--ledger-scrollbar-size);
+    transition: background-color 150ms ease;
+  }
+
+  /* Mantine's recipe: the fill deepens one step on track hover and while pressed. */
+  .ledger-scrollbar-thumb:active,
+  .ledger-scrollbar:hover > .ledger-scrollbar-thumb {
+    background-color: var(--ledger-scrollbar-thumb-active);
+  }
+
+  /* Mantine's extended grab area: the pseudo-element widens the pointer target to 44px
+     around the 7px-tall thumb without painting anything. */
+  .ledger-scrollbar-thumb::before {
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-start: 50%;
+    width: 100%;
+    min-width: 44px;
+    height: 100%;
+    min-height: 44px;
+    content: "";
+    translate: -50% -50%;
   }
 
   /* The corner is never seen (Mantine keeps it opacity 0): it exists to measure the corner
