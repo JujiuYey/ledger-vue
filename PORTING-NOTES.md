@@ -121,6 +121,17 @@ Packaging fixes the new gates exposed (all in `packages/vue`):
 - Root `@types/node` added: the root `tsc` run was declared by the root tsconfig's comment but
   the `typecheck` script never actually executed it before.
 
+## Documentation (ported 2026-09-28)
+
+The React repo's full `docs/` set (20 files) is ported 1:1 in structure and voice into `docs/`,
+adapted to this edition's reality: Vue SFC samples (named imports, kebab-case template props),
+no Mantine (`--ledger-*` tokens, `data-color-scheme`/`colorScheme`), the narrowed appearance
+props (plain CSS colors, number spacing, radius presets), the reactive option surface
+(ReactiveInput/ReactiveHandler, stable-for-life `table`), `table.atoms.<slice>.get()` reads, and
+the Vue-only internals in architecture.md (committed `version` watch, isRef handler resolution,
+oxlint, vite-plugin-dts@4). `docs/README.md` is the map; the React original's docs stay the
+upstream reference. Every cited API was verified against the source during the port.
+
 ## File → agent ownership (do not edit files you don't own)
 
 - A (logic): `persist.ts`, `edit-meta.ts`, `use-committed-table.ts`, `use-row-commands.ts`,

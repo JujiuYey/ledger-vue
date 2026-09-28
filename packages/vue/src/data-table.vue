@@ -1372,6 +1372,8 @@ const tableStyleVars = computed(() => ({
 }));
 const tableProps = computed(() => ({
   role: "presentation" as const,
+  // Mantine's own spelling for the same switch on its Table (docs/styling.md#appearance).
+  ...(props.tabularNums ? { "data-tabular-nums": true } : {}),
   ...getStyles("table", { style: tableStyleVars.value })
 }));
 const rootProps = computed(() => getStyles("root", { style: { ...rootVars.value, ...columnVars.value } }));

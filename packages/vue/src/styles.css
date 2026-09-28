@@ -298,6 +298,11 @@
     width: 100%;
   }
 
+  /* The tabularNums prop — digits columnate across every synced table (header, body, footer). */
+  .ledger-table[data-tabular-nums] {
+    font-variant-numeric: tabular-nums;
+  }
+
   /* ------------------------------------------------------------------------------------------
    * Header: rendered outside the body scroller (never occludes its scrollbar, never bounces
    * with overscroll); cells only stick horizontally when pinned. Actions reveal on hover/focus.

@@ -1,0 +1,44 @@
+# Pinning
+
+Column pinning sticks columns to the horizontal edges; row pinning sticks rows to the vertical edges. Both are sticky-positioned within the table's own scroll regions — the layout contract of [sizing.md](sizing.md) is unaffected.
+
+## Column pinning
+
+`enableColumnPinning` is **on by default**: each row of the [columns panel](columns.md#the-columns-panel) carries a three-state control — pin start / unpin / pin end (per-column opt-out via `enablePinning: false` on the def). TanStack v9 renamed the positions to the logical `start` / `end` (left/right in LTR, mirrored in RTL); state rides the `columnPinning` trio with the v9 `ColumnPinningState` shape verbatim (`{ start: string[], end: string[] }`, both arrays required):
+
+```vue
+<DataTable
+  :default-column-pinning="{ start: ['name'], end: ['actions'] }"
+  …
+/>
+```
+
+Mechanics worth knowing:
+
+- Pinned cells are `position: sticky` with offsets summed from the **engine-resolved widths** ([sizing.md](sizing.md#column-widths)) and written as CSS variables — the offsets are exact for grow columns too, and resizing shifts every pinned offset **without re-rendering rows**. Header and footer cells pin the same way inside their own viewports, so all regions stick in unison.
+- The boundary cell of each pinned block renders an **edge shadow** (`data-pinned-edge`), visible only while content is actually scrolled past that edge (`data-scrolled-start` / `data-scrolled-end` on the root) — so an unscrolled table shows no phantom shadows.
+- Every offset uses logical properties (`inset-inline-*`), so RTL mirrors for free.
+- Pinned cells read their background from the `--ledger-row-bg` pipeline: stripes, hover, and selected tints are always covered correctly ([styling.md](styling.md)).
+- The injected selection/expander columns are always pinned to the start, ahead of user pins, merged invisibly over the consumer's slice — they never appear in your `columnPinning` state, and neither the panel nor `column.pin()` can put them there.
+- **A pinned column's position comes from its index in `columnPinning.start` / `.end`, not from `columnOrder`** (TanStack maps the array), which is why the columns panel reorders a pinned zone by rewriting that array instead.
+- Header drag-reorder follows the same rule: center drops rewrite `columnOrder`, while start/end drops rewrite that pinning slice. A column can only drop inside its current zone; use the pin controls to move between zones.
+- `columnPinning` belongs to the default `persistState` layout set ([state.md](state.md)).
+
+## Row pinning
+
+`enableRowPinning` (default `false`) renders TanStack's pinned rows sticky: top rows stick under the header, bottom rows above the lower edge.
+
+```vue
+<DataTable
+  enable-row-pinning
+  :default-row-pinning="{ top: ['summary-row'], bottom: [] }"
+  …
+/>
+```
+
+- State rides the `rowPinning` trio (TanStack `RowPinningState`, `{ top: string[], bottom: string[] }`). ledger provides the **state and the sticky rendering**; the trigger affordance is the page's call — typically an actions column calling `row.pin("top")` / `row.pin(false)`, since a universal per-row pin button would be noise.
+- Offsets are **measured, not assumed**: the header lives outside the body scroller ([sizing.md](sizing.md)), so the first top-pinned item sticks at the scroller's own top edge and each following one offsets by the measured heights above it (ResizeObserver-tracked); bottom items mirror upward. Multiple pinned rows therefore stack instead of piling onto one edge, row-height changes re-measure automatically, and replacing/reordering rows rebinds observation even when the item count stays unchanged.
+- Pinned rows render outside the virtual window — always mounted, even with `virtualizedRows` on; only center rows virtualize. Pinned columns are the same story under `virtualizedColumns`: only center columns window ([virtualization.md](virtualization.md#column-virtualization)).
+- An expanded pinned row's detail panel is the next measured item in the same sticky zone, so the row and panel remain together without overlap.
+- Pinned rows are excluded from stripe parity and carry `data-pinned-row="top" | "bottom"` plus an opaque background so scrolling content passes beneath them.
+- Pinned rows never render twice — the body draws the top set, the center (unpinned) rows, then the bottom set. TanStack's `keepPinnedRows` default (`true`) keeps a pinned row visible even when filtering or pagination would exclude it; pass `:table-options="{ keepPinnedRows: false }"` to hide it with the rest ([state.md](state.md)).

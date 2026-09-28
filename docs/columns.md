@@ -1,0 +1,205 @@
+# Columns
+
+Columns are **raw TanStack `ColumnDef`s** — ledger has no bespoke column DSL. Every column-level TanStack capability (`sortFn`, `sortDescFirst`, `sortUndefined`, `invertSorting`, `filterFn`, `aggregationFn`, `size`/`minSize`/`maxSize`, per-column `enable*`) is therefore automatically present, and knowledge transfers directly from TanStack's docs. Presentation concerns ride the typed `meta` extension described below.
+
+## Defining columns
+
+`createColumnHelper` is re-exported from the main entry (never import `@tanstack/*` directly). Renderers — `header`, `cell`, `footer` — return `VNodeChild`: `h()` output, a component, or plain text, and `flexRender` (also re-exported) resolves the function forms:
+
+```ts
+import { createColumnHelper } from "@coldsmirk/ledger-vue";
+import { h } from "vue";
+
+const helper = createColumnHelper<Person>();
+
+const columns = [
+  helper.accessor("name", { header: "Name", size: 160 }),
+  helper.accessor(person => person.contact.email, {
+    id: "email",                              // required with an accessor function
+    header: "Email",
+    meta: { truncate: true }
+  }),
+  helper.display({
+    id: "actions",
+    size: 64,
+    enableSorting: false,
+    cell: ({ row }) => h(RowActions, { person: row.original })
+  })
+];
+```
+
+Keep the array's identity stable (module scope or a `computed`) — a fresh identity on every reactive tick re-initializes the table, and a dev-mode warning detects the churn.
+
+### Header groups and footers
+
+Group columns render as grouped header rows with correct `colSpan` and placeholder handling. Wrap the children in **`helper.columns([...])`** — v9's variadic-tuple wrapper preserves each child's own `TValue`, which `group`'s `unknown`-valued signature would otherwise reject:
+
+```ts
+helper.group({
+  id: "q1",
+  header: "Q1",
+  meta: { align: "center" },
+  columns: helper.columns([
+    helper.accessor("q1Revenue", { header: "Revenue" }),
+    helper.accessor("q1Cost", { header: "Cost" })
+  ])
+})
+```
+
+Column footers render as a totals row **only when at least one column — leaf or group — declares a `footer`** (each footer level renders only if it carries one) — in an **always-visible region below the scroller** (like the header, it mirrors horizontal scroll), so totals never scroll out of view; pinned columns keep their sticky offsets there. Note that header drag-reordering is unavailable while header groups exist (see below).
+
+## The `meta` extension
+
+ledger declaration-merges its presentation surface into TanStack's `ColumnMeta`, so `meta` is fully typed with no imports:
+
+| Key | Type | Effect |
+| --- | --- | --- |
+| `label` | `string` | Plain-text column name for every surface that cannot render the `header` — the columns panel, CSV headers, filter and editor field names. Wins over a string `header`; without either, those surfaces fall back to the column id, so a column whose `header` is a render function should declare one |
+| `align` | `"start" \| "center" \| "end"` | Logical text alignment for header, cells, and footer — RTL-correct by construction |
+| `truncate` | `boolean` | Single-line ellipsis, plus a `title` tooltip **when the text is actually clipped** |
+| `filter` | variant \| config \| render function | Header filter UI — see [filtering.md](filtering.md) |
+| `edit` | renderer \| config \| instant config | Inline cell editing — the renderer is the application's; see [editing.md](editing.md) |
+| `cellProps` | `TdHTMLAttributes \| (cell) => TdHTMLAttributes \| undefined` | DOM props for this column's `<td>`s (Vue's own attribute family) — see [DOM props](styling.md#dom-props) |
+| `headerCellProps` | `ThHTMLAttributes \| (header) => ThHTMLAttributes \| undefined` | DOM props for this column's `<th>` |
+| `footerCellProps` | `ThHTMLAttributes \| (footer) => ThHTMLAttributes \| undefined` | DOM props for this column's footer cell |
+| `export` | `false \| { header?, value? }` | Exclude from or reshape the CSV export ([api.md](api.md#tocsv)) |
+| `hiddenFrom` / `visibleFrom` | `"xs".."xl"` \| any CSS length | Breakpoint-driven presence — see [Responsive columns](#responsive-columns) |
+
+### Truncation tooltips
+
+`meta.truncate` clips to one line and resolves its `title` on hover, from the rendered text of the element itself — so a custom `cell` renderer's output is what you read, a non-string value still gets a readable tooltip, and text that fits gets no tooltip at all. Truncated **header** labels behave the same way, with no opt-in. Being a native `title`, it reaches pointer users; for a tooltip that survives keyboard and touch, render your own inside `cell` or attach it through `meta.cellProps` ([DOM props](styling.md#dom-props)).
+
+### Hiding the header
+
+`:with-column-headers="false"` removes the header region entirely — for a compact list, a card-shaped table, a summary strip. Two consequences worth stating before you reach for it:
+
+- Everything that lives in the header goes with it: sort controls, filter popovers, resize handles, drag reordering. `DataTableColumnsPanel` still reaches width, order, visibility, pinning, and grouping, and sorting stays available through the `sorting` slice.
+- The columns no longer announce themselves, so the table needs a name of its own (`aria-label`) and cells that read on their own — see [accessibility.md](accessibility.md). ARIA row numbering adjusts automatically: with no header rows, the first body row is row 1.
+
+## Width model
+
+Sized columns are fixed pixels; unsized columns grow to share the leftover viewport width. The full width contract (`tableMinWidth`, grow columns, why layout is always fixed) lives in [sizing.md](sizing.md).
+
+### Resizing
+
+```vue
+<DataTable enable-column-resizing … />
+```
+
+- Off by default. When on, every resizable column gets a handle on its trailing edge; per-column opt-out is TanStack's own `enableResizing: false` on the def. On a table without `withColumnBorders`, each handle marks itself with a faint mid-height tick (column borders already say where columns end); hovering it swaps in the full primary-colored line, and the drag/double-click hint rides a native `title`.
+- Drags are live and **exactly 1:1**: the pointer session starts from the width the engine actually rendered ([sizing.md](sizing.md#resizing-interplay)), updates are CSS variables, so a drag **never touches the rendered rows**, and the result is clamped to the column's `minSize`/`maxSize`.
+- **Escape or a pointercancel cancels** an in-flight drag, restoring the pre-drag width.
+- **Double-click fits the column to its content**: the header cell, every rendered body cell (under virtualization that is the current window — unrendered rows have no boxes to measure) and the column's footer cell are measured, and the result is clamped like a drag. A footer that spans columns is skipped — it says nothing about the width of any one of them. The definition width stays reachable through the columns panel's width reset.
+- The drag direction follows the handle's computed `direction` (RTL-correct).
+- State rides the `columnSizing` slice (`columnSizing` / `defaultColumnSizing` / `onColumnSizingChange`), persistable via `persistState`.
+
+### Drag reordering
+
+```vue
+<DataTable enable-column-ordering … />
+```
+
+- Off by default. `enableColumnOrdering` is a ledger-owned name: TanStack has `columnOrder` state but no switch for the affordance. It turns on **both** reordering affordances — the header drag and the columns panel's drag handles.
+- The header drag is pointer-based and dependency-free: a press becomes a drag after a 5px threshold (so the sortable header label keeps its click), a drop indicator marks the target edge, Escape cancels, and a completed drag suppresses the click that follows.
+- Limited to single-row headers — with column groups, sibling order inside a group is ambiguous, so the switch is ignored with a dev-mode warning.
+- The injected selection/expander columns cannot be dragged or displaced.
+- State rides the `columnOrder` slice, persistable via `persistState`.
+
+### Visibility
+
+`enableHiding` is on by default; per-column opt-out is `enableHiding: false` on the def, which renders the panel's checkbox disabled rather than dropping the row. State rides the `columnVisibility` slice, persistable via `persistState`.
+
+### Responsive columns
+
+`meta.hiddenFrom` and `meta.visibleFrom` carry responsive presence onto columns: `hiddenFrom: "sm"` removes the column at and above the `sm` breakpoint, `visibleFrom: "md"` shows it only from `md` up. The named scale is fixed — xs 576, sm 768, md 992, lg 1200, xl 1400, in px — and any other value is a CSS length carried verbatim into the `(min-width: …)` media query (`clamp(30em, 50vw, 60em)` included).
+
+```ts
+helper.accessor("contact", { header: "Contact", meta: { visibleFrom: "md" } }),
+helper.accessor("age",     { header: "Age",     meta: { hiddenFrom: "sm" } }),
+```
+
+An off-breakpoint column is removed from the definitions before TanStack sees them, so the width engine redistributes, the colgroup follows, and the columns panel lists only what the viewport can show. Column state keyed by id — `columnVisibility`, ordering, persisted layout — is untouched and reapplies when the column returns. Where `matchMedia` does not exist (SSR first paint, some test environments) every column stays visible.
+
+## Merged cells
+
+Cell spanning is TanStack v9's `cellSpanningFeature`, registered on the canonical set — the switches live on the raw defs, no ledger DSL:
+
+```ts
+helper.accessor("dept", {
+  header: "Department",
+  spanRows: true                        // adjacent equal values merge vertically
+}),
+helper.accessor("note", {
+  spanColumns: ({ row }) => row.original.isSummary ? Infinity : 1   // per-row colspan
+}),
+```
+
+- `spanRows: true` merges adjacent rows whose values are `Object.is`-equal (nullish never merges); a predicate `({ anchorRow, row, … }) => boolean` replaces the comparison. Spans recompute from the rows actually rendered, so sorting/filtering/paging only change adjacency; runs never cross a page, a pinned-row section, a tree depth change, or a grouped row.
+- `spanColumns` returns the column count (clamped to the cell's pinned region; `Infinity` = the rest of the region).
+- ledger renders real `rowSpan`/`colSpan` attributes (plus `aria-rowspan`/`aria-colspan`) and skips covered cells — the real-`<table>` architecture gets merging natively.
+- Spanning is **ignored (with a dev warning) under `virtualizedRows`, `virtualizedColumns` or `renderDetailPanel`**. All three break the invariants a span is computed against: virtualization renders a window on either axis, and a detail panel inserts a synthetic `<tr>` *between* data rows that a `rowSpan` would then reach across while the covered cell below it is still dropped.
+- `enableCellSpanning` (default `true`) switches the whole mechanism off.
+- A row-spanning cell paints one background across its run, so `striped` reads oddly next to merges — report-style spanning tables usually run with row borders instead.
+
+## The columns panel
+
+`<DataTableColumnsPanel :table="table" />` is the single surface for every column-layout decision. One row per leaf column, in the table's display order, each control appearing only when the column can actually do it. A row is named by `meta.label`, then the string `header`, then the column id — a column whose `header` is a render function should declare a `meta.label` so its id never shows:
+
+| Control | Appears when | Writes |
+| --- | --- | --- |
+| Drag handle | `enableColumnOrdering`, single-row headers | `columnOrder` / `columnPinning` |
+| Visibility checkbox | always (disabled where `getCanHide()` is false) | `columnVisibility` |
+| Pin start / unpin / pin end | `enableColumnPinning` ([pinning.md](pinning.md)) | `columnPinning` |
+| Width | `enableColumnResizing` ([sizing.md](sizing.md#the-panels-width-control)) | `columnSizing` |
+| Group / ungroup | `enableGrouping` ([grouping.md](grouping.md)) | `grouping` |
+
+**Hidden columns stay listed** — that is the point of the panel. Their checkbox is simply unchecked and their name dims, so a column can always come back.
+
+**At rest a row is identity, not machinery.** The resting panel shows the checkbox, the name, and dimmed marks only where the layout deviates from default — an overridden width as a small `px` figure, a grouped column's glyph, a hidden column's dimmed name. The controls themselves — drag handle, width field, pin position control, group toggle — reveal as a toolbar over the hovered or keyboard-focused row, so resting names get the full row width. The pin control is a segmented radio group (one choice of position — start, unpinned, end — with the current one visibly selected), not three toggle buttons. The reveal is stylesheet-only: every control is always in the DOM and the accessibility tree, and where hover does not exist (`hover: none` media) the toolbar sits inline permanently.
+
+**Reset** restores order, visibility, pinning, and width — exactly the layout set `persistState` persists by default — to what the application declared through `defaultColumnOrder` / `defaultColumnVisibility` / `defaultColumnPinning` / `defaultColumnSizing`, falling back to the column definitions' own layout. Grouping is not layout and is left alone.
+
+Rows are grouped into three zones in display order — pinned start, unpinned, pinned end (TanStack v9's logical positions). An occupied pinned zone renders as a captioned, tinted shelf — the zone's pin glyph beside its `pinnedStart` / `pinnedEnd` label, the same vocabulary the row's pin segments speak, and the same visual promise the pinned columns' opaque background makes in the table itself; nothing pinned means one flat list with no chrome at all. **Dragging reorders within a zone only**: a pinned column's position comes from its index in `columnPinning`, an unpinned one's from `columnOrder`, so the two are different edits. Moving a column between zones is what the pin controls are for.
+
+### The trigger is yours
+
+The panel makes **no assumption about what opens it**. The default slot is the trigger, wrapped as the popover target:
+
+```vue
+<DataTableColumnsPanel :table="table">
+  <button type="button">Columns</button>
+</DataTableColumnsPanel>
+```
+
+Render it with no slot and the panel renders **bare** — its primary shape, ready for a drawer, a sidebar, or a settings page of its own:
+
+```vue
+<Teleport to="body">
+  <div v-if="opened" class="columns-drawer" role="dialog" aria-label="Columns">
+    <DataTableColumnsPanel :table="table" />
+  </div>
+</Teleport>
+```
+
+`popoverProps` tunes the popover (`placement`, `panelWidth`, `panelMaxHeight`, `panelStyle`) and is ignored without a trigger. The dropdown caps itself at `60vh` and the panel's list scrolls inside it; bare, the panel fills whatever box its host gives it and degrades to content height in an indefinite one.
+
+For a trigger inside a header cell — a cog beside an actions column's title — put it on a column that **cannot sort**: a sortable header *is* a `<button>` covering the whole cell, and nesting a control inside it is invalid HTML. A `helper.display({ … })` column never sorts, so its header is a plain box. One v9 note: header renderers receive the context's **core** table shape, while the panel's prop is typed as `TableInstance` — assert it across (the runtime object is the same instance, and the panel only touches the surface the two share):
+
+```ts
+helper.display({
+  id: "actions",
+  header: ({ table }) => h(DataTableColumnsPanel, { table: table as TableInstance<Person> }, {
+    // the default slot is the trigger — IconSettings here is the app's own icon component
+    default: () => h("button", { type: "button", "aria-label": "Column settings" }, [h(IconSettings)])
+  }),
+  cell: ({ row }) => h(RowActions, { row })
+})
+```
+
+## Injected columns
+
+Enabling row selection injects a checkbox column (`ledger:select`); a detail panel or `getSubRows` injects an expander column (`ledger:expander`) — both sized from the table's `size` (the control at its size, the cell's inline padding either side, a pixel of air). Both are:
+
+- always pinned to the start, ahead of any user-pinned columns (merged invisibly over the consumer's `columnPinning` slice);
+- excluded from sorting, hiding, resizing, filtering, global filtering, grouping, and drag reordering;
+- propagation-stopped — a click on a checkbox or expander never fires `onRowClick`.

@@ -21,6 +21,13 @@ pnpm build           # library + playground
 Ported from the React original (v0.4.0 feature set). See `PORTING-NOTES.md` for the porting
 conventions and the full React → Vue mapping.
 
+## Documentation
+
+The full guide set lives in [`docs/`](docs/README.md) — start with
+[getting-started](docs/getting-started.md), the complete surface in [api.md](docs/api.md), and
+[architecture.md](docs/architecture.md) for contributor internals. The React original's docs are
+the upstream reference.
+
 ## Install
 
 ```bash

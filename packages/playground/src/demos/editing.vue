@@ -63,8 +63,6 @@ watch(lang, () => {
   lastCommit.value = null;
 });
 
-// `editTrigger` is a mount-time option in the Vue edition, so the segmented control remounts
-// the table through :key and the switch takes effect live.
 const trigger = ref<"double-click" | "click">("double-click");
 
 const columns = computed((): Array<ColumnDef<Product, any>> => [
@@ -155,7 +153,6 @@ const handleEditCommit = async (change: DataTableEditCommit<Product>) => {
     <span style="color: var(--pg-dimmed); font-size: 12px">{{ t.hint }}</span>
 
     <DataTable
-      :key="trigger"
       :labels="labels"
       :columns="columns"
       :data="data"
