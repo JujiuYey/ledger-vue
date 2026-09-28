@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, ref, watchEffect } from "vue";
+import { computed, defineAsyncComponent, onScopeDispose, ref, watchEffect } from "vue";
 
 import "@coldsmirk/ledger-vue/styles.css";
 
@@ -265,6 +265,21 @@ const DEMO_COMPONENTS: Record<DemoId, ReturnType<typeof defineAsyncComponent>> =
 const activeId = ref<DemoId>("basic");
 const mobileNavOpened = ref(false);
 const sourceOpened = ref(false);
+const burger = ref<HTMLButtonElement | null>(null);
+
+/* The same 48em line the stylesheet collapses the nav below: above it the nav is a permanent
+   sidebar (never hidden, never inert); below it the nav is an overlay the burger owns, and a
+   collapsed overlay must not be focusable and must return focus to the burger after a pick. */
+const desktop = ref(true);
+const desktopQuery = window.matchMedia?.("(width >= 48em)") ?? null;
+
+const syncDesktop = () => {
+  desktop.value = desktopQuery?.matches ?? true;
+};
+
+syncDesktop();
+desktopQuery?.addEventListener("change", syncDesktop);
+onScopeDispose(() => desktopQuery?.removeEventListener("change", syncDesktop));
 
 /* Day/night: <html data-color-scheme> is what both the playground chrome and the library
    tokens read. Default follows the OS; the choice persists. */
@@ -304,6 +319,11 @@ const activeComponent = computed(() => DEMO_COMPONENTS[activeId.value]);
 function selectDemo(id: DemoId): void {
   activeId.value = id;
   mobileNavOpened.value = false;
+
+  // The overlay nav closed — focus returns to the toggle that opened it (React parity).
+  if (!desktop.value) {
+    burger.value?.focus();
+  }
 }
 </script>
 
@@ -311,6 +331,7 @@ function selectDemo(id: DemoId): void {
   <div class="pg-app">
     <header class="pg-header">
       <button
+        ref="burger"
         class="pg-burger"
         :aria-expanded="mobileNavOpened"
         aria-controls="playground-navigation"
@@ -357,6 +378,8 @@ function selectDemo(id: DemoId): void {
         id="playground-navigation"
         class="pg-nav"
         :data-open="mobileNavOpened || undefined"
+        :aria-hidden="!desktop && !mobileNavOpened ? 'true' : undefined"
+        :inert="!desktop && !mobileNavOpened ? true : undefined"
       >
         <div v-for="group in GROUPS" :key="group.id" class="pg-nav-group">
           <div class="pg-nav-caption">{{ t.groups[group.id] }}</div>

@@ -245,9 +245,12 @@ const TextFilter = defineComponent({
     });
     const filterValue = computed(() => (typeof raw.value === "string" ? raw.value : ""));
     const value = ref(filterValue.value);
+    // flushOnDispose: closing the popover commits what was typed within the 200ms window —
+    // never drops it (the React edition's flushOnUnmount).
     const apply = createDebouncer(
       (next: string) => props.column.setFilterValue(next === "" ? undefined : next),
-      () => 200
+      () => 200,
+      { flushOnDispose: true }
     );
 
     const unsubscribe = subscribeColumnFilters?.(filters => {

@@ -14,13 +14,16 @@ import type {
   Updater
 } from "@tanstack/vue-table";
 import type { ComputedRef } from "vue";
-import { computed, toValue, watch } from "vue";
+import { computed, isRef, toValue, watch } from "vue";
 
 import type { LedgerInternalMeta, LedgerSortingController } from "./ledger-commands";
 import type { LedgerFeatures } from "./ledger-features";
 import type {
   ColumnDef,
+  DataTableEditCommit,
   DataTableEditingCell,
+  DataTableRowEditCommit,
+  DataTableRowReorder,
   TableInstance,
   UseDataTableOptions
 } from "./types";
@@ -83,7 +86,6 @@ export function useDataTable<TData extends RowData>(options: UseDataTableOptions
     enableColumnPinning = true,
     enableColumnOrdering = false,
     enableHiding = true,
-    enableEditing = true,
     enableGrouping = false,
     enableRowPinning = false,
     enableCellSpanning = true,
@@ -94,18 +96,46 @@ export function useDataTable<TData extends RowData>(options: UseDataTableOptions
     sortingMode = "client",
     filterMode = "client",
     paginationMode = "client",
-    editTrigger = "double-click",
-    editMode = "cell",
-    onEditCommit,
-    onRowEditCommit,
-    enableActiveRow = false,
     enableRowOrdering = false,
-    onRowReorder,
     rowDragColumn,
     persistState,
     defaultColumn,
     tableOptions
   } = options;
+
+  /* ---- behavior flags and handlers the editing paths read as reactive inputs ----
+   * The React edition re-read these every render (the hook IS the render); a composable runs
+   * once, so they resolve through `toValue` per access instead — the same ReactiveInput contract
+   * `data`, `columns` and the state slices already follow. Handlers resolve per invocation, so
+   * both identity and presence answer a runtime swap. */
+  const enableEditing = computed(() => toValue(options.enableEditing) ?? true);
+  const editTrigger = computed(() => toValue(options.editTrigger) ?? "double-click");
+  const editMode = computed(() => toValue(options.editMode) ?? "cell");
+  const enableActiveRow = computed(() => toValue(options.enableActiveRow) ?? false);
+  // Handlers resolve through `isRef`, never `toValue`: a plain handler IS a function, and
+  // `toValue` would call it to read its return value. A component that must swap its handler at
+  // runtime passes it through a ref; a hook consumer passes the function itself.
+  const resolveEditCommit = ():
+    | ((change: DataTableEditCommit<TData>) => void | Promise<void>)
+    | undefined => {
+    const input = options.onEditCommit;
+
+    return isRef(input) ? input.value : input;
+  };
+  const resolveRowEditCommit = ():
+    | ((change: DataTableRowEditCommit<TData>) => void | Promise<void>)
+    | undefined => {
+    const input = options.onRowEditCommit;
+
+    return isRef(input) ? input.value : input;
+  };
+  const resolveRowReorder = ():
+    | ((reorder: DataTableRowReorder<TData>) => void)
+    | undefined => {
+    const input = options.onRowReorder;
+
+    return isRef(input) ? input.value : input;
+  };
 
   /* ---- the feature set: canonical modules + the consumer's filterFns, fixed at mount ---- */
   const features = buildLedgerFeatures(options.filterFns);
@@ -248,28 +278,28 @@ export function useDataTable<TData extends RowData>(options: UseDataTableOptions
   const cellSession = useCellEditing<TData>({
     committed,
     editingCell,
-    onEditCommit,
+    onEditCommit: resolveEditCommit,
     setEditingCell
   });
 
   const instantSession = useInstantEditing<TData>({
     committed,
-    onEditCommit
+    onEditCommit: resolveEditCommit
   });
 
   const rowSession = useRowEditing<TData>({
     committed,
     editingRowId,
-    onRowEditCommit,
+    onRowEditCommit: resolveRowEditCommit,
     setEditingRowId
   });
 
-  if (isDev && editMode === "row") {
+  if (isDev && editMode.value === "row") {
     if (options.editingCell !== undefined || options.onEditingCellChange) {
       warnOnce("row-mode-editing-cell", "editingCell is a cell-mode slice — editMode: \"row\" tracks editingRowId instead.");
     }
 
-    if (onEditCommit) {
+    if (resolveEditCommit()) {
       warnOnce("row-mode-on-edit-commit", "onEditCommit never fires under editMode: \"row\" — use onRowEditCommit.");
     }
   }
@@ -304,7 +334,7 @@ export function useDataTable<TData extends RowData>(options: UseDataTableOptions
   const withExpander = Boolean(renderDetailPanel || getSubRows);
   // The static row-ordering gate (docs/rows.md#row-ordering): without a handler nothing could
   // apply a move — row order is data order — and tree data has no flat order to move within.
-  const withRowDrag = enableRowOrdering && onRowReorder !== undefined && !getSubRows;
+  const withRowDrag = enableRowOrdering && resolveRowReorder() !== undefined && !getSubRows;
 
   if (isDev && enableRowOrdering && getSubRows) {
     warnOnce("row-ordering-tree", "enableRowOrdering supports flat data only — getSubRows disables it (docs/rows.md#row-ordering).");
@@ -455,7 +485,7 @@ export function useDataTable<TData extends RowData>(options: UseDataTableOptions
       selection: selectionCommands,
       expansion: expansionCommands,
       editing: {
-        mode: editMode,
+        mode: editMode.value,
         cell: editingCell.value,
         active: cellSession.active,
         start: cellSession.start,
@@ -481,14 +511,14 @@ export function useDataTable<TData extends RowData>(options: UseDataTableOptions
         subscribeColumnFilters,
         subscribeGlobalFilter
       },
-      editTrigger,
-      enableEditing,
-      onEditCommit,
-      onRowEditCommit,
+      editTrigger: editTrigger.value,
+      enableEditing: enableEditing.value,
+      onEditCommit: resolveEditCommit(),
+      onRowEditCommit: resolveRowEditCommit(),
       renderDetailPanel,
       selectAllScope,
       activeRow: {
-        enabled: enableActiveRow,
+        enabled: enableActiveRow.value,
         id: activeRowId.value,
         set: setActiveRowId
       },
@@ -501,7 +531,7 @@ export function useDataTable<TData extends RowData>(options: UseDataTableOptions
           && columnFilters.value.length === 0
           && !globalFilter.value
           && grouping.value.length === 0,
-        onRowReorder
+        onRowReorder: resolveRowReorder()
       }
     };
   });
@@ -597,14 +627,19 @@ export function useDataTable<TData extends RowData>(options: UseDataTableOptions
    * What the editing paths and the row commands answer from — the post-flush counterpart of the
    * React edition's insertion effect: after every commit-carrying update, the sessions see this
    * render's answers (docs/architecture.md). State, data and definitions are the reactive inputs
-   * a row model can move for.
+   * a row model can move for; the gate and the commit handler's presence are watched too, so a
+   * runtime flip reconciles the sessions even when no row-model input moved.
    */
+  const commitPresence = computed(() =>
+    editMode.value === "row" ? resolveRowEditCommit() : resolveEditCommit()
+  );
+
   watch(
-    [managed.state, managed.columns, managed.data],
+    [managed.state, managed.columns, managed.data, enableEditing, commitPresence],
     () => {
       captureCommitted(table, {
-        enableEditing,
-        hasCommitHandler: Boolean(editMode === "row" ? onRowEditCommit : onEditCommit)
+        enableEditing: enableEditing.value,
+        hasCommitHandler: Boolean(commitPresence.value)
       });
       captureRows(table);
     },

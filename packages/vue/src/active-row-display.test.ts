@@ -152,16 +152,13 @@ describe("active row navigation", () => {
   it("announces the row by its position in the rows on screen", async () => {
     mountSortHarness();
 
-    // The row active at mount stays silent in the Vue edition — the announcer's watch is not
-    // immediate, where React's mount-run effect spoke "Carol, row 1 of 3". Recorded as the
-    // todo below; the moves below it are what this case can still pin.
-    expect(announcement()).toBe("");
+    // The row active at mount is spoken by the mount run, the way the React edition's mount-run
+    // effect spoke it.
+    expect(announcement()).toBe("Carol, row 1 of 3");
 
     await press("End");
 
     expect(currentRowId()).toBe("3");
     expect(announcement()).toBe("Bob, row 3 of 3");
   });
-
-  it.todo("announces the row already active at mount: product bug — the active-row announcer's watch (data-table.vue) is not immediate, so a defaultActiveRowId present at mount is never spoken (the React edition's mount-run effect announced \"Carol, row 1 of 3\")");
 });

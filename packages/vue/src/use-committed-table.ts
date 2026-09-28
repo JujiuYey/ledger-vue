@@ -1,4 +1,5 @@
 import type { RowData } from "@tanstack/vue-table";
+import type { Ref } from "vue";
 
 import type { EditGate } from "./edit-meta";
 import type { Cell, Column, Row, TableInstance } from "./types";
@@ -21,12 +22,20 @@ import type { Cell, Column, Row, TableInstance } from "./types";
  * nothing here fixes the upstream mutation itself, only ledger's own reliance on it.
  */
 import { canEditWith, normalizeEdit } from "./edit-meta";
+import { ref } from "vue";
 
 type ColumnEdit = NonNullable<Cell<any, unknown>["column"]["columnDef"]["meta"]>["edit"];
 
 export type CaptureCommitted<TData extends RowData> = (table: TableInstance<TData>, gate: EditGate) => void;
 
 export interface CommittedTable {
+  /**
+   * Bumped by every capture — one tick per commit-carrying change (state, data, definitions,
+   * the editing gate, a commit handler's presence). The session controllers watch it to
+   * reconcile after every committed render, which is what the React edition's dependency-free
+   * effect did.
+   */
+  version: Ref<number>;
   /**
    * The row as the committed render resolved it — `original` included, which is what a commit
    * departs from.
@@ -118,6 +127,7 @@ export function useCommittedTable<TData extends RowData>(): readonly [CommittedT
   // reactive graph — so there is no ref to keep, and closures defined here are stable for the
   // life of the instance, which is what the React edition's `useCallback` bought.
   let snapshot: Snapshot = EMPTY;
+  const version = ref(0);
 
   const capture: CaptureCommitted<TData> = (table, gate) => {
     const columns = new Map<string, Column<any, unknown>>();
@@ -150,6 +160,8 @@ export function useCommittedTable<TData extends RowData>(): readonly [CommittedT
       hasCommitHandler: gate.hasCommitHandler,
       rows: table.getPrePaginatedRowModel().rowsById as Record<string, Row<any>>
     };
+
+    version.value += 1;
   };
 
   // Stable identities: this goes to the session controllers, which memoize against it.
@@ -197,6 +209,7 @@ export function useCommittedTable<TData extends RowData>(): readonly [CommittedT
     row,
     tableGate,
     value,
+    version,
     visibleColumnIds
   };
 

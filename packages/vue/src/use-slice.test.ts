@@ -8,11 +8,9 @@ import { useSlice } from "./use-slice";
 /**
  * Port of the React `useSlice` contract tests. The React edition's concurrency-specific cases
  * (transitions, Suspense blockers, requested-value bookkeeping) exist to defeat React tearing
- * and have no Vue counterpart — Vue's reactivity has no discarded renders, so `useSlice`
- * collapses to one rule (see use-slice.ts): the internal ref mirrors the controlled prop
- * whenever it moves, and a `set` writes the resolved value into the ref first — the optimistic
- * echo that stands until the owner answers through the prop. The two dropped scenarios are
- * noted inline below.
+ * and have no Vue counterpart — Vue's reactivity has no discarded renders, and the slice reads
+ * through one computed: the controlled prop while the owner holds the slice, the internal ref
+ * the moment it does not (see use-slice.ts). The dropped scenarios are noted inline below.
  */
 describe("useSlice", () => {
   it("runs uncontrolled from defaultValue and resolves functional updaters", () => {
@@ -62,10 +60,9 @@ describe("useSlice", () => {
     set(previous => previous + 1);
 
     expect(onChange).toHaveBeenCalledWith(6);
-    // Vue contract: the set is the optimistic echo — the ref holds the resolved value until the
-    // owner answers or declines through the prop (the React edition held the line at 5; its
-    // requested-value machinery is what the Vue edition collapses).
-    expect(current.value).toBe(6);
+    // Controlled: the rendered value only moves when the prop moves (the React edition held the
+    // same line — silence is a refusal, not an acceptance).
+    expect(current.value).toBe(5);
 
     // The owner answers 6: the ref follows the prop.
     ownerValue.value = 6;
@@ -92,12 +89,7 @@ describe("useSlice", () => {
   // discarded render named" — the discarded render, the Suspense throw and the transition are
   // React mechanisms; Vue has no render to discard, so the scenario does not arise.
 
-  it("keeps the optimistic echo until the owner answers through the prop", async () => {
-    // React: "drops an optimistic value the controlled owner declined". Vue: an owner that never
-    // moves the prop never re-fires the mirror watch, so the echo stands and the next event
-    // departs from it. The invariant that survives from the React test is the second part: two
-    // separate events (a microtask checkpoint between them, exactly what a browser does between
-    // two real clicks) each resolve against the current internal value, never a stale one.
+  it("drops an optimistic value the controlled owner declined", async () => {
     const onChange = vi.fn();
     const ownerValue = ref<number>(5);
     const [current, set] = useSlice<number>({
@@ -110,18 +102,21 @@ describe("useSlice", () => {
     set(previous => previous + 1);
 
     expect(onChange.mock.calls.map(call => call[0])).toEqual([6]);
-    expect(current.value).toBe(6);
+    // `value` never moved, so the on-screen value stays at what the owner last said.
+    expect(current.value).toBe(5);
 
-    // Two separate events.
+    // A separate event, so any boundary between the two is crossed — exactly what a browser
+    // does between two real clicks.
     await Promise.resolve();
 
     set(previous => previous + 1);
 
-    expect(onChange.mock.calls.map(call => call[0])).toEqual([6, 7]);
-    expect(current.value).toBe(7);
+    // The second event departs from 5 as well. Asking for 7 would be building on a request the
+    // owner turned down.
+    expect(onChange.mock.calls.map(call => call[0])).toEqual([6, 6]);
+    expect(current.value).toBe(5);
 
-    // The owner declines and names 5 again — no change, no mirror — then changes its mind to 4:
-    // the prop moving is what re-claims the slice.
+    // The prop moving is what re-claims the slice — the owner finally answers 4.
     ownerValue.value = 4;
     await nextTick();
 
@@ -192,7 +187,8 @@ describe("useSlice", () => {
     set(previous => previous + 1);
 
     expect(onChange).toHaveBeenLastCalledWith(11);
-    expect(current.value).toBe(11);
+    // Controlled now: the owner's 10 stays on screen until it answers the 11 it was asked for.
+    expect(current.value).toBe(10);
   });
 });
 

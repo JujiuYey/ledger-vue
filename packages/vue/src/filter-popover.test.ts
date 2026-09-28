@@ -199,12 +199,34 @@ describe("filter popover", () => {
     expect(clearCaption()).toBeUndefined();
   });
 
-  // Verified failing against the current product: the React edition's debounced text filter is
-  // `useDebouncedCallback({ delay: 200, flushOnUnmount: true })` — closing the popover unmounts
-  // the control and FLUSHES the pending write, so the filter applies. The Vue edition's
-  // `createDebouncer` (controls.ts) only CANCELS on scope dispose, so closing the popover inside
-  // the 200ms window drops the pending filter entirely (rows stay 3; verified live).
-  it.todo("applies pending text when the popover closes — product bug: the debounced filter cancels on popover close instead of flushing (React flushes on unmount)");
+  it("applies pending text when the popover closes", async () => {
+    const textColumns: Array<ColumnDef<Person, any>> = [
+      {
+        accessorKey: "name",
+        header: "Name",
+        meta: { filter: "text" }
+      }
+    ];
+
+    mountTable({ columns: textColumns, data: people, getRowId });
+
+    const trigger = q("[aria-label=\"Filter Name\"]");
+
+    trigger?.click();
+    await eventually(() => expect(q("input", panel()!)).toBeTruthy());
+
+    const input = q("input", panel()!) as HTMLInputElement;
+
+    setValue(input, "Alice");
+    await tick();
+
+    // The popover closes inside the 200ms window — no debounce wait ever passes — and the typed
+    // filter must land with it (the React edition's flushOnUnmount, here flushOnDispose).
+    trigger?.click();
+
+    await eventually(() => expect(panel()).toBeNull());
+    await eventually(() => expect(bodyRows()).toHaveLength(1));
+  });
 
   it("synchronizes the text input when its filter is cleared externally", async () => {
     const handleRef = ref<DataTableHandle<Person> | null>(null);

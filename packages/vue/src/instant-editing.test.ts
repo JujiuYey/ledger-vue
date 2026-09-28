@@ -356,7 +356,39 @@ describe("checkbox transient editing", () => {
     expect(onEditCommit.mock.calls[0]?.[0]).toMatchObject({ previousValue: true, value: false });
   });
 
-  it.todo("latches a gate that shuts behind a write, and does not revive it when the gate reopens: Vue edition holds feature switches mount-time (use-data-table.ts destructures enableEditing once; a setProps flip never reaches the gate), so the enableEditing rerender this case rides cannot be staged");
+  it("latches a gate that shuts behind a write, and does not revive it when the gate reopens", async () => {
+    const inFlight = Promise.withResolvers<void>();
+    const view = (enableEditing: boolean) => ({
+      columns,
+      data: items,
+      enableEditing,
+      getRowId,
+      onEditCommit: () => inFlight.promise
+    });
+
+    const wrapper = mountTable(view(true));
+
+    await toggle("Edit On sale");
+    expect(box("Edit On sale").disabled).toBe(true);
+
+    // The gate shuts. The control goes with it — there is no session to cancel, but the failure
+    // this write may come back with has nowhere left to be shown.
+    await wrapper.setProps(view(false));
+    await tick();
+    expect(boxes("Edit On sale")).toHaveLength(0);
+
+    inFlight.reject(new Error("landed behind a closed gate"));
+    await inFlight.promise.catch(() => undefined);
+    await tick();
+
+    await wrapper.setProps(view(true));
+    await tick();
+
+    // The gate reopening is not a reprieve for the write that was out when it shut.
+    expect(q("[role=\"alert\"]")).toBeNull();
+    expect(box("Edit On sale").disabled).toBe(false);
+    expect(box("Edit On sale").checked).toBe(true);
+  });
 
   it("does not re-render every row because the commit handler was written inline", async () => {
     const renders: string[] = [];
@@ -415,11 +447,53 @@ describe("checkbox transient editing", () => {
     expect(renders).toEqual([]);
   });
 
-  it.todo("commits through the handler as it is now, not as the row last saw it: product bug — data-table.vue passes props.onEditCommit into useDataTable once at setup (line ~280), so only the mount-time handler identity ever answers (observed: the first render's closure answered); use-data-table.ts's own comment claims handler identities in the ledger meta 'stay current'");
+  it("commits through the handler as it is now, not as the row last saw it", async () => {
+    const seen: number[] = [];
+    const view = (generation: number) => ({
+      columns,
+      data: items,
+      getRowId,
+      // Each generation is a distinct closure, the way an inline handler is a distinct function
+      // on every render of the host in the React edition.
+      onEditCommit: () => {
+        seen.push(generation);
+      }
+    });
 
-  it.todo("re-renders a row when the commit handler appears or disappears: product bug — handler presence is resolved from the same mount-time capture (the committed snapshot's hasCommitHandler and ledger.onEditCommit), so a setProps onEditCommit removal never closes the gate (observed: the checkboxes stayed)");
+    const wrapper = mountTable(view(0));
 
-  it.todo("re-registers its controls when the table they belong to is replaced: product bug — data-table.vue reads props.table once at setup (line ~248), so a swapped hook-mode instance never reaches the body (observed: the first controller's record kept governing the control); cell-editor.ts and use-instant-editing.ts both describe hook-mode table swapping as supported");
+    // The rows deliberately do not re-render for this, so nothing in them may be holding the
+    // handler: the write goes through the controller, which always reaches the latest one.
+    await wrapper.setProps(view(1));
+    await wrapper.setProps(view(2));
+    await toggle("Edit On sale");
+
+    expect(seen).toEqual([2]);
+  });
+
+  it("re-renders a row when the commit handler appears or disappears", async () => {
+    const view = (withHandler: boolean) => ({
+      columns,
+      data: items,
+      getRowId,
+      onEditCommit: withHandler ? vi.fn() : undefined
+    });
+
+    const wrapper = mountTable(view(true));
+    expect(boxes("Edit On sale")).toHaveLength(2);
+
+    // Presence is part of the gate: with nowhere for an edit to go the cells are read-only, and
+    // the rows have to be told.
+    await wrapper.setProps(view(false));
+    await tick(3);
+    expect(boxes("Edit On sale")).toHaveLength(0);
+
+    await wrapper.setProps(view(true));
+    await tick(3);
+    expect(boxes("Edit On sale")).toHaveLength(2);
+  });
+
+  it.todo("re-registers its controls when the table they belong to is replaced: table instance swap deferred — SFC captures it once (data-table.vue reads props.table at setup); recorded deviation");
 });
 
 describe("custom instant renderers", () => {

@@ -33,7 +33,11 @@ export interface UseCellEditingInput<TData extends RowData> {
    * core and carries whatever pass ran last (see `use-committed-table.ts`).
    */
   committed: CommittedTable;
-  onEditCommit: ((change: DataTableEditCommit<TData>) => void | Promise<void>) | undefined;
+  /**
+   * The commit handler, resolved per invocation — a getter so identity and presence answer a
+   * runtime swap the way the React edition's per-render read did.
+   */
+  onEditCommit: () => ((change: DataTableEditCommit<TData>) => void | Promise<void>) | undefined;
 }
 
 export interface CellEditingSession {
@@ -403,7 +407,7 @@ export function useCellEditing<TData extends RowData>({
     let result: void | Promise<void>;
 
     try {
-      result = onEditCommit?.({
+      result = onEditCommit()?.({
         column: committed.column(columnId),
         previousValue,
         row,
@@ -568,6 +572,10 @@ export function useCellEditing<TData extends RowData>({
   // the empty snapshot setup starts with.
   watch(editingCell, next => reconcileSlice(next), { flush: "post" });
   queueMicrotask(() => reconcileSlice(editingCell.value));
+  // The committed render moving (data, definitions, the gate, a commit handler's presence) is
+  // the other half of React's dependency-free effect: eligibility re-checked after every
+  // capture, not only when the slice or an editor moves.
+  watch(committed.version, () => reconcileEligibility(), { flush: "post" });
 
   const clear = () => {
     if (rendered !== null) {

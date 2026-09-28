@@ -96,13 +96,6 @@ async function tick(times = 3): Promise<void> {
 }
 
 describe("playground navigation", () => {
-  /* App.vue drops three behaviors the React shell has on the mobile navigation: the collapsed
-     #playground-navigation carries no aria-hidden="true"/inert, and selecting a demo never moves
-     focus back to the burger toggle. */
-  it.todo(
-    "collapsed mobile navigation is aria-hidden + inert and returns focus to the toggle — product bug: App.vue drops the React shell's aria-hidden/inert and focus-return"
-  );
-
   it("uses native buttons and closes the mobile navigation after selection", async () => {
     mountApp();
     await tick();
@@ -110,9 +103,8 @@ describe("playground navigation", () => {
     const toggle = screen.getByRole("button", { name: "Toggle navigation" });
     const navigation = document.querySelector("#playground-navigation");
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    // React additionally asserts the collapsed nav carries aria-hidden="true"/inert here, again
-    // after the selection below, and that focus returns to the toggle after it — App.vue drops
-    // all three (see the it.todo above).
+    expect(navigation?.getAttribute("aria-hidden")).toBe("true");
+    expect(navigation?.hasAttribute("inert")).toBe(true);
 
     fireEvent.click(toggle);
     await tick();
@@ -128,6 +120,9 @@ describe("playground navigation", () => {
     await tick();
 
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).toBe(toggle);
+    expect(navigation?.getAttribute("aria-hidden")).toBe("true");
+    expect(navigation?.hasAttribute("inert")).toBe(true);
     expect(appearance.getAttribute("aria-current")).toBe("page");
     expect(screen.getByRole("heading", { name: "Borders and density" })).toBeTruthy();
   });

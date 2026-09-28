@@ -137,7 +137,7 @@ describe("useDataTable", () => {
     expect(names()).toEqual(["Carol", "Alice", "Bob"]);
   });
 
-  it("keeps a controlled slice reporting resolved values", async () => {
+  it("keeps a controlled slice pinned to the prop and reports resolved values", async () => {
     const onSortingChange = vi.fn();
     const sorting: SortingState = [];
     const table = useTableInSetup<Person>(() => ({
@@ -152,11 +152,8 @@ describe("useDataTable", () => {
     await flush();
 
     expect(onSortingChange).toHaveBeenCalledWith([{ id: "age", desc: false }]);
-    // Vue contract: the set is the optimistic echo — the instance carries the resolved value
-    // while the (unchanged) prop stays authoritative; the React edition's requested-value
-    // ledger, which re-claimed the prop's value inside the same commit, is collapsed (see
-    // use-slice.ts). The owner's next answer re-claims the slice through the mirror watch.
-    expect(table.atoms.sorting.get()).toEqual([{ id: "age", desc: false }]);
+    // Controlled: the instance still renders the prop's (empty) sorting — silence is a refusal.
+    expect(table.atoms.sorting.get()).toEqual([]);
   });
 
   it("injects the selection and expander columns pinned to the start", async () => {

@@ -39,7 +39,7 @@ import type {
   Row as TanStackRow,
   VueTable
 } from "@tanstack/vue-table";
-import type { HTMLAttributes, MaybeRefOrGetter, TdHTMLAttributes, ThHTMLAttributes, VNodeChild } from "vue";
+import type { HTMLAttributes, MaybeRefOrGetter, Ref, TdHTMLAttributes, ThHTMLAttributes, VNodeChild } from "vue";
 
 import type { DataTableElementProps } from "./element-props";
 import type { LedgerSize } from "./size";
@@ -63,6 +63,13 @@ export type ReactiveInput<T> = MaybeRefOrGetter<T>;
  * as uncontrolled.
  */
 export type ReactiveInputOption<T> = MaybeRefOrGetter<T | undefined>;
+
+/**
+ * A handler a component may swap at runtime by passing it through a (read-only) ref. Resolved
+ * with `isRef`, never `toValue` — a plain handler is itself a function, and `toValue` would
+ * call it to read its return value.
+ */
+export type ReactiveHandler<H> = H | Readonly<Ref<H | undefined>>;
 
 /**
  * TanStack's table instance (the enriched Vue shape: `Subscribe`, reactive `atoms`),
@@ -354,7 +361,11 @@ export interface UseDataTableOptions<TData extends RowData> {
   enableColumnPinning?: boolean;
   enableColumnOrdering?: boolean;
   enableHiding?: boolean;
-  enableEditing?: boolean;
+  /**
+   * Ledger-owned editing gate (TanStack has no switch of this name). Accepts a ref/getter so a
+   * running table answers a flip at runtime — the React edition re-reads it every render.
+   */
+  enableEditing?: ReactiveInputOption<boolean>;
   enableGrouping?: boolean;
   enableRowPinning?: boolean;
   /**
@@ -391,21 +402,22 @@ export interface UseDataTableOptions<TData extends RowData> {
    */
   rowCount?: ReactiveInputOption<number>;
 
-  /* Editing */
-  editTrigger?: DataTableEditTrigger;
-  editMode?: DataTableEditMode;
-  onEditCommit?: (change: DataTableEditCommit<TData>) => void | Promise<void>;
+  /* Editing — flags and handlers accept a ref/getter: the composable runs once, and these answer
+   * a runtime flip with the current value, the way the React edition's per-render hook read did. */
+  editTrigger?: ReactiveInputOption<DataTableEditTrigger>;
+  editMode?: ReactiveInputOption<DataTableEditMode>;
+  onEditCommit?: ReactiveHandler<(change: DataTableEditCommit<TData>) => void | Promise<void>>;
   /**
    * Row-mode atomic commit: every editable column's value, changed or not. Only consulted
    * while `editMode: "row"`.
    */
-  onRowEditCommit?: (change: DataTableRowEditCommit<TData>) => void | Promise<void>;
+  onRowEditCommit?: ReactiveHandler<(change: DataTableRowEditCommit<TData>) => void | Promise<void>>;
 
   /**
    * A single keyboard-reachable current row (row click or ↑/↓/Home/End on the focused body;
    * Enter fires `onRowActivate`), independent from checkbox selection. Off by default.
    */
-  enableActiveRow?: boolean;
+  enableActiveRow?: ReactiveInputOption<boolean>;
 
   /* Row ordering (docs/rows.md#row-ordering) */
   /**
@@ -419,7 +431,7 @@ export interface UseDataTableOptions<TData extends RowData> {
    * A completed drag: apply the move to `data` (`arrayMove` semantics, `fromIndex` → `toIndex`).
    * Without this handler the switch is inert and no handle column is injected.
    */
-  onRowReorder?: (reorder: DataTableRowReorder<TData>) => void;
+  onRowReorder?: ReactiveHandler<(reorder: DataTableRowReorder<TData>) => void>;
   /**
    * Overrides the injected drag-handle column, on the same terms as `selectionColumn`.
    */
@@ -832,14 +844,16 @@ declare module "@tanstack/table-core" {
      */
     export?: false | DataTableExportMeta<TData>;
     /**
-     * Removes the column at and above the breakpoint. Breakpoint values follow the ledger
-     * scale (xs 36em, sm 48em, md 62em, lg 75em, xl 87em).
+     * Removes the column at and above the breakpoint. Breakpoint values follow the ledger scale
+     * (xs 36em, sm 48em, md 62em, lg 75em, xl 87em) — or any CSS length/media condition the
+     * matchMedia stub of the host accepts (`clamp(30em, 50vw, 60em)`); the implementation carries
+     * it verbatim, so the type stays open the same way.
      */
-    hiddenFrom?: "xs" | "sm" | "md" | "lg" | "xl";
+    hiddenFrom?: "xs" | "sm" | "md" | "lg" | "xl" | (string & {});
     /**
      * Shows the column only at and above the breakpoint.
      */
-    visibleFrom?: "xs" | "sm" | "md" | "lg" | "xl";
+    visibleFrom?: "xs" | "sm" | "md" | "lg" | "xl" | (string & {});
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- declaration merging requires TanStack's exact type parameter list

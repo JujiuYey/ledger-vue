@@ -38,7 +38,7 @@ import type {
  * absent. Controlled slices resolve through BOTH halves of the Vue contract: the
  * `onXChange` props, and the `update:x` events `v-model:x` compiles to.
  */
-import { computed, reactive, ref, toValue, useId, watch, watchEffect } from "vue";
+import { computed, isRef, onMounted, reactive, ref, toValue, useId, watch, watchEffect } from "vue";
 import type { FunctionalComponent } from "vue";
 
 import {
@@ -263,7 +263,9 @@ const table = props.table
       enableColumnPinning: props.enableColumnPinning,
       enableColumnOrdering: props.enableColumnOrdering,
       enableHiding: props.enableHiding,
-      enableEditing: props.enableEditing,
+      // The editing keys resolve through getters: the composable runs once, and these must answer
+      // a runtime flip with the current prop (the React edition re-read them every render).
+      enableEditing: () => toValue(props.enableEditing),
       enableGrouping: props.enableGrouping,
       enableRowPinning: props.enableRowPinning,
       enableCellSpanning: props.enableCellSpanning,
@@ -275,13 +277,27 @@ const table = props.table
       filterMode: props.filterMode,
       paginationMode: props.paginationMode,
       rowCount: () => toValue(props.rowCount),
-      editTrigger: props.editTrigger,
-      editMode: props.editMode,
-      onEditCommit: props.onEditCommit,
-      onRowEditCommit: props.onRowEditCommit,
-      enableActiveRow: props.enableActiveRow,
+      editTrigger: () => toValue(props.editTrigger),
+      editMode: () => toValue(props.editMode),
+      // Handlers ride refs (isRef-resolved both here and in useDataTable): a getter form would
+      // be indistinguishable from the handler itself under toValue.
+      onEditCommit: computed(() => {
+        const handler = props.onEditCommit;
+
+        return isRef(handler) ? handler.value : handler;
+      }),
+      onRowEditCommit: computed(() => {
+        const handler = props.onRowEditCommit;
+
+        return isRef(handler) ? handler.value : handler;
+      }),
+      enableActiveRow: () => toValue(props.enableActiveRow),
       enableRowOrdering: props.enableRowOrdering,
-      onRowReorder: props.onRowReorder,
+      onRowReorder: computed(() => {
+        const handler = props.onRowReorder;
+
+        return isRef(handler) ? handler.value : handler;
+      }),
       rowDragColumn: props.rowDragColumn,
       sorting: () => toValue(props.sorting),
       defaultSorting: props.defaultSorting,
@@ -1159,6 +1175,15 @@ watch([activeRowId, activeRowEnabled, displaySnapshot, labels], () => {
   // The snapshot is the dependency in its own right, not the row id: sorting, filtering or
   // paging changes the current row's position, the total, and even whether it is still on the
   // page, and hiding or reordering a column can rename the row without moving it.
+});
+
+// The mount run: a `defaultActiveRowId` present from the first render never moves a dependency,
+// and React's mount effect announced it ("Carol, row 1 of 3") — so the first announcement rides
+// the mount, not a change.
+onMounted(() => {
+  if (activeRowEnabled.value) {
+    announceActiveRow();
+  }
 });
 
 const handleActiveRowKeyDown = (event: KeyboardEvent) => {

@@ -38,7 +38,11 @@ export interface UseRowEditingInput<TData extends RowData> {
    * core and carries whatever pass ran last (see `use-committed-table.ts`).
    */
   committed: CommittedTable;
-  onRowEditCommit: ((change: DataTableRowEditCommit<TData>) => void | Promise<void>) | undefined;
+  /**
+   * The commit handler, resolved per invocation — a getter so identity and presence answer a
+   * runtime swap the way the React edition's per-render read did.
+   */
+  onRowEditCommit: () => ((change: DataTableRowEditCommit<TData>) => void | Promise<void>) | undefined;
 }
 
 /**
@@ -502,6 +506,10 @@ export function useRowEditing<TData extends RowData>({
   // the empty snapshot setup starts with.
   watch(editingRowId, () => reconcileRowSlice(), { flush: "post" });
   queueMicrotask(reconcileRowSlice);
+  // The committed render moving is the other half of React's dependency-free effect: the slice
+  // and the editors are not the only things that can strand a session — data arriving fills a
+  // null baseline, and the gate shutting without session traffic must still be latched.
+  watch(committed.version, () => reconcileRowSlice(), { flush: "post" });
 
   /**
    * Whether the request issued under `session` still speaks for `rowId`. Sessions end the moment
@@ -710,7 +718,7 @@ export function useRowEditing<TData extends RowData>({
     try {
       // Single erasure, the same boundary the render layer crosses: the committed resolver speaks
       // the erased shape, and v9's `in out` generics make Row invariant in TData.
-      result = onRowEditCommit?.({
+      result = onRowEditCommit()?.({
         row: row as Row<TData>,
         values,
         previousValues
@@ -897,6 +905,9 @@ export function useRowEditing<TData extends RowData>({
 
       rowEditors.delete(columnId);
       redrawRowLevelError();
+      // An editor leaving is a render's worth of news too — the last one unmounting is how a
+      // gate shuts on the only column this session met.
+      reconcileRowEligibility();
     };
   };
 

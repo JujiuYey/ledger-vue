@@ -466,7 +466,44 @@ describe("row editing mode", () => {
 
   it.todo("keeps the row on screen when a transition to another row never commits: React-only machinery — the suspended startTransition the case builds on has no Vue counterpart");
 
-  it.todo("keeps editing the row on screen when the controller declines the switch: product deviation — useSlice echoes a controlled set optimistically (use-slice.ts), so an owner that declines onEditingRowIdChange cannot keep the previous row on screen");
+  it("keeps editing the row on screen when the controller declines the switch", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const onRowEditCommit = vi.fn();
+    // A controlled slice whose owner ignores the change. React's contract is that the row on
+    // screen stays the one `editingRowId` names, so that is the row every write still belongs
+    // to — asking to move the edit is not the same as having moved it.
+    const onEditingRowIdChange = vi.fn();
+
+    mountTable({
+      columns,
+      data: people,
+      editingRowId: "1",
+      editMode: "row",
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onEditingRowIdChange,
+      onRowEditCommit
+    });
+
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+
+    handle.value?.startEditing("2");
+    await tick();
+
+    expect(onEditingRowIdChange).toHaveBeenCalledWith("2");
+    expect(editingRowElement("1")).toBeTruthy();
+
+    await typeInto(editorInputs()[0] as HTMLInputElement, "Drafted");
+    handle.value?.stopEditing({ commit: true });
+
+    await waitForDom(() => expect(onRowEditCommit).toHaveBeenCalledTimes(1));
+    const change = onRowEditCommit.mock.calls[0]?.[0] as {
+      row: { id: string };
+      values: Record<string, unknown>;
+    };
+    expect(change.row.id).toBe("1");
+    expect(change.values).toEqual({ age: 30, name: "Drafted" });
+  });
 
   it("sends one write when the row is committed twice before the close renders", async () => {
     const handle = ref<DataTableHandle<Person> | null>(null);
@@ -496,7 +533,45 @@ describe("row editing mode", () => {
     expect(onRowEditCommit).toHaveBeenCalledTimes(1);
   });
 
-  it.todo("captures the baseline when the edited row arrives after the first render: product bug — a null baseline is only filled by reconcileRowSlice (slice moves and the initial microtask), never when the controlled row's data finally arrives");
+  it("captures the baseline when the edited row arrives after the first render", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const onRowEditCommit = vi.fn();
+    // Deep-linking straight into an edit: the row is named before the fetch that carries it
+    // lands, so the first pass has no row to read a previous value from.
+    const narrow: Array<ColumnDef<Person, any>> = [
+      {
+        accessorKey: "age",
+        header: "Age",
+        meta: { edit: numberEditor() }
+      }
+    ];
+
+    const wrapper = mountTable({
+      columns,
+      data: [],
+      editingRowId: "1",
+      editMode: "row",
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onRowEditCommit
+    });
+    await tick();
+    expect(editorInputs()).toHaveLength(0);
+
+    await wrapper.setProps({ data: people });
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    await typeInto(editorInputs()[0] as HTMLInputElement, "Drafted");
+
+    // The column leaves the definitions, so only the baseline can say what was there before.
+    await wrapper.setProps({ columns: narrow });
+    await waitForDom(() => expect(editorInputs()).toHaveLength(1));
+
+    handle.value?.stopEditing({ commit: true });
+
+    await waitForDom(() => expect(onRowEditCommit).toHaveBeenCalledTimes(1));
+    const change = onRowEditCommit.mock.calls[0]?.[0] as { previousValues: Record<string, unknown> };
+    expect(change.previousValues).toEqual({ age: 30, name: "Carol" });
+  });
 
   it("keeps a value typed while an async row commit was in flight", async () => {
     const handle = ref<DataTableHandle<Person> | null>(null);
@@ -550,9 +625,69 @@ describe("row editing mode", () => {
     expect(committed).toEqual([{ name: "First" }, { name: "Second" }]);
   });
 
-  it.todo("puts the editors back when the application declines to close a cancelled row: product deviation — useSlice echoes a controlled set optimistically (use-slice.ts), so the echoed close unmounts the editors a declining owner meant to keep");
+  it("puts the editors back when the application declines to close a cancelled row", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const onRowEditCommit = vi.fn();
 
-  it.todo("writes the values this session already committed, not the data it has not reached: product deviation — useSlice echoes a controlled set optimistically (use-slice.ts), so the echoed close after the first commit unmounts the editors before the second");
+    mountTable({
+      columns,
+      data: people,
+      editingRowId: "1",
+      editMode: "row",
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onEditingRowIdChange: vi.fn(),
+      onRowEditCommit
+    });
+
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    const nameInput = editorInputs()[0] as HTMLInputElement;
+    await typeInto(nameInput, "Drafted");
+    expect((editorInputs()[0] as HTMLInputElement).value).toBe("Drafted");
+
+    await keyDown(nameInput, "Escape");
+
+    // The cancel discarded the pending values and the controller kept the row, so what the row
+    // shows has to be the row again — not a value nothing would commit.
+    expect((editorInputs()[0] as HTMLInputElement).value).toBe("Carol");
+
+    handle.value?.stopEditing({ commit: true });
+    await tick();
+    expect(onRowEditCommit).not.toHaveBeenCalled();
+  });
+
+  it("writes the values this session already committed, not the data it has not reached", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const committed: Array<Record<string, unknown>> = [];
+
+    mountTable({
+      columns,
+      data: people,
+      editingRowId: "1",
+      editMode: "row",
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onEditingRowIdChange: vi.fn(),
+      onRowEditCommit: ({ values }: { values: Record<string, unknown> }) => {
+        committed.push(values);
+      }
+    });
+
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    await typeInto(editorInputs()[0] as HTMLInputElement, "First");
+    handle.value?.stopEditing({ commit: true });
+    expect(committed).toEqual([{ age: 30, name: "First" }]);
+
+    // The application kept the row open and has not fed the write back into `data`, so the cell
+    // still reads "Carol". A second commit must not carry that back over the name it just wrote.
+    await typeInto(editorInputs()[1] as HTMLInputElement, "31");
+    handle.value?.stopEditing({ commit: true });
+
+    expect(committed).toEqual([
+      { age: 30, name: "First" },
+      { age: 31, name: "First" }
+    ]);
+  });
 
   it("keeps an uncontrolled row open when its commit settles behind a newer draft", async () => {
     const handle = ref<DataTableHandle<Person> | null>(null);
@@ -608,7 +743,38 @@ describe("row editing mode", () => {
     expect(committed[1]).toEqual({ name: "Second" });
   });
 
-  it.todo("cancels the row when the table-level switch shuts under it: product bug — data-table.vue snapshots enableEditing at setup (line 266 passes the raw prop into useDataTable), so a later enableEditing=false never reaches the editing gate");
+  it("cancels the row when the table-level switch shuts under it", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const onRowEditCommit = vi.fn();
+
+    const wrapper = mountTable({
+      columns,
+      data: people,
+      editMode: "row",
+      enableEditing: true,
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onRowEditCommit
+    });
+
+    handle.value?.startEditing("1");
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    await typeInto(editorInputs()[0] as HTMLInputElement, "Drafted");
+
+    // Losing eligibility cancels (docs/editing.md) — the body merely stops rendering editors, so
+    // the session has to end itself or it would sit there behind a closed gate.
+    await wrapper.setProps({ enableEditing: false });
+
+    await waitForDom(() => expect(document.querySelector("[data-editing-row]")).toBeNull());
+    expect(onRowEditCommit).not.toHaveBeenCalled();
+
+    // Reopening the gate must not bring the session — or its draft — back with it.
+    await wrapper.setProps({ enableEditing: true });
+    await tick();
+
+    expect(editorInputs()).toHaveLength(0);
+    expect(document.querySelector("[data-editing-row]")).toBeNull();
+  });
 
   it("keeps a row whose other columns are still editable, dropping only the closed one", async () => {
     const handle = ref<DataTableHandle<Person> | null>(null);
@@ -653,11 +819,127 @@ describe("row editing mode", () => {
     expect(onRowEditCommit).not.toHaveBeenCalled();
   });
 
-  it.todo("lets data that moved past the value it acknowledged win the next commit: product deviation — useSlice echoes a controlled set optimistically (use-slice.ts), so the echoed close after the first commit unmounts the editors before the second");
+  it("lets data that moved past the value it acknowledged win the next commit", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const committed: Array<{ previousValues: Record<string, unknown>; values: Record<string, unknown> }> = [];
 
-  it.todo("shows what the session wrote when an editor remounts under it: product deviation — useSlice echoes a controlled set optimistically (use-slice.ts), so the echoed close after the commit unmounts the editors the case re-shows");
+    const wrapper = mountTable({
+      columns,
+      data: people,
+      editingRowId: "1",
+      editMode: "row",
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onEditingRowIdChange: vi.fn(),
+      onRowEditCommit: (change: {
+        previousValues: Record<string, unknown>;
+        values: Record<string, unknown>;
+      }) => {
+        committed.push({ previousValues: change.previousValues, values: change.values });
+      }
+    });
 
-  it.todo("does not bring a written value back when the data returns to what it departed from: product deviation — useSlice echoes a controlled set optimistically (use-slice.ts), so the echoed close after the commit unmounts the editors before the data moves");
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    await typeInto(editorInputs()[0] as HTMLInputElement, "First");
+    handle.value?.stopEditing({ commit: true });
+    expect(committed[0]?.values).toEqual({ age: 30, name: "First" });
+
+    // The server normalized what it accepted and fed that back. It, not the value we sent, is
+    // what the row now holds — and what the editor has to show.
+    await wrapper.setProps({ data: [
+      {
+        age: 30,
+        id: "1",
+        name: "FIRST"
+      },
+      people[1] as Person
+    ] });
+
+    await waitForDom(() => expect((editorInputs()[0] as HTMLInputElement).value).toBe("FIRST"));
+
+    await typeInto(editorInputs()[1] as HTMLInputElement, "31");
+    handle.value?.stopEditing({ commit: true });
+
+    expect(committed).toHaveLength(2);
+    expect(committed[1]?.values).toEqual({ age: 31, name: "FIRST" });
+    expect(committed[1]?.previousValues).toEqual({ age: 30, name: "FIRST" });
+  });
+
+  it("shows what the session wrote when an editor remounts under it", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+
+    mountTable({
+      columns,
+      data: people,
+      editingRowId: "1",
+      editMode: "row",
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onEditingRowIdChange: vi.fn(),
+      onRowEditCommit: vi.fn()
+    });
+
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    await typeInto(editorInputs()[0] as HTMLInputElement, "First");
+    handle.value?.stopEditing({ commit: true });
+
+    // The write went through and the application kept the row open without feeding it back. An
+    // editor that unmounts and returns — the columns panel here, virtual scrolling in a real
+    // table — must not go back to showing a value the row no longer holds.
+    handle.value?.table.getColumn("name")?.toggleVisibility(false);
+    await waitForDom(() => expect(editorInputs()).toHaveLength(1));
+    handle.value?.table.getColumn("name")?.toggleVisibility(true);
+
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    expect((editorInputs()[0] as HTMLInputElement).value).toBe("First");
+  });
+
+  it("does not bring a written value back when the data returns to what it departed from", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const committed: Array<Record<string, unknown>> = [];
+    const named = (name: string): Person[] => [
+      {
+        age: 30,
+        id: "1",
+        name
+      },
+      people[1] as Person
+    ];
+
+    const wrapper = mountTable({
+      columns,
+      data: named("Carol"),
+      editingRowId: "1",
+      editMode: "row",
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onEditingRowIdChange: vi.fn(),
+      onRowEditCommit: ({ values }: { values: Record<string, unknown> }) => {
+        committed.push(values);
+      }
+    });
+
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    await typeInto(editorInputs()[0] as HTMLInputElement, "First");
+    handle.value?.stopEditing({ commit: true });
+    expect(committed).toHaveLength(1);
+
+    // The write lands in the data...
+    await wrapper.setProps({ data: named("First") });
+    await waitForDom(() => expect((editorInputs()[0] as HTMLInputElement).value).toBe("First"));
+
+    // ...and is then reverted by somebody else. That is the data's own value now, not ours
+    // resurfacing because it happens to match what the write departed from.
+    await wrapper.setProps({ data: named("Carol") });
+
+    await waitForDom(() => expect((editorInputs()[0] as HTMLInputElement).value).toBe("Carol"));
+
+    await typeInto(editorInputs()[1] as HTMLInputElement, "31");
+    handle.value?.stopEditing({ commit: true });
+
+    expect(committed).toHaveLength(2);
+    expect(committed[1]).toEqual({ age: 31, name: "Carol" });
+  });
 
   it("keeps the row when its only editable column leaves the definitions", async () => {
     const handle = ref<DataTableHandle<Person> | null>(null);
@@ -702,9 +984,84 @@ describe("row editing mode", () => {
     expect(change.previousValues).toEqual({ name: "Carol" });
   });
 
-  it.todo("ends the row when a commit rejects after the table switch shut behind it: product bug — enableEditing is snapshotted at setup in data-table.vue, so a later enableEditing=false never reaches the editing gate");
+  it("ends the row when a commit rejects after the table switch shut behind it", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const inFlight = Promise.withResolvers<void>();
 
-  it.todo("does not authorize a switch when the gate shuts under a pending commit: product bug — enableEditing is snapshotted at setup in data-table.vue, so a later enableEditing=false never reaches the editing gate");
+    const wrapper = mountTable({
+      columns,
+      data: people,
+      editMode: "row",
+      enableEditing: true,
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onRowEditCommit: () => inFlight.promise
+    });
+
+    handle.value?.startEditing("1");
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    await typeInto(editorInputs()[0] as HTMLInputElement, "Drafted");
+    handle.value?.stopEditing({ commit: true });
+
+    // The gate shuts while the write is out. The row stops presenting as editing at once, and
+    // every editor unmounts with it — so nothing is left whose state change could bring the
+    // session round again, and the settlement has to end it.
+    await wrapper.setProps({ enableEditing: false });
+    await waitForDom(() => {
+      expect(document.querySelector("[data-editing-row]")).toBeNull();
+      expect(editorInputs()).toHaveLength(0);
+    });
+
+    inFlight.reject(new Error("nope"));
+    await inFlight.promise.catch(() => undefined);
+    await tick();
+
+    expect(document.querySelector("[data-editing-row]")).toBeNull();
+
+    await wrapper.setProps({ enableEditing: true });
+    await tick();
+
+    expect(editorInputs()).toHaveLength(0);
+    expect(document.querySelector("[data-editing-row]")).toBeNull();
+  });
+
+  it("does not authorize a switch when the gate shuts under a pending commit", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const inFlight = Promise.withResolvers<void>();
+    const onEditingRowIdChange = vi.fn();
+
+    const wrapper = mountTable({
+      columns,
+      data: people,
+      editingRowId: "1",
+      editMode: "row",
+      enableEditing: true,
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onEditingRowIdChange,
+      onRowEditCommit: () => inFlight.promise
+    });
+
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    await typeInto(editorInputs()[0] as HTMLInputElement, "Drafted");
+
+    // Asking for Alice commits Carol first and waits on that write.
+    handle.value?.startEditing("2");
+    await tick();
+    onEditingRowIdChange.mockClear();
+
+    // Editing is switched off while the write is out.
+    await wrapper.setProps({ enableEditing: false });
+
+    await inFlight.resolve();
+    await inFlight.promise;
+    await tick();
+
+    // The session ended because the gate shut, not because the row finished — nothing may be
+    // opened on the strength of it, and the one ending is requested once.
+    expect(onEditingRowIdChange).not.toHaveBeenCalledWith("2");
+    expect(onEditingRowIdChange.mock.calls.filter(call => call[0] === null)).toHaveLength(1);
+  });
 
   it("records a baseline for a column the session only meets later", async () => {
     const handle = ref<DataTableHandle<Person> | null>(null);
@@ -753,9 +1110,96 @@ describe("row editing mode", () => {
     expect(change.previousValues).toEqual({ age: 30, name: "Carol" });
   });
 
-  it.todo("cancels the row when the gate shuts on the only column it met later: product bug — reconciliation never runs when the session's last editor unmounts with the slice unchanged, so the row stays marked editing");
+  it("cancels the row when the gate shuts on the only column it met later", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const ageOnly: Array<ColumnDef<Person, any>> = [
+      {
+        accessorKey: "age",
+        header: "Age",
+        meta: { edit: numberEditor() }
+      }
+    ];
+    const nameOnly: Array<ColumnDef<Person, any>> = [
+      {
+        accessorKey: "name",
+        header: "Name",
+        meta: { edit: textEditor() }
+      }
+    ];
+    const readOnlyName: Array<ColumnDef<Person, any>> = [{ accessorKey: "name", header: "Name" }];
 
-  it.todo("falls back to the last previous it saw when a column's definition goes: product bug — the baseline's record-on-every-sighting refresh only runs at slice moves, editor mounts and commits, so a data change under an open editor is never seen");
+    const wrapper = mountTable({
+      columns: ageOnly,
+      data: people,
+      editMode: "row",
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onRowEditCommit: vi.fn()
+    });
+
+    handle.value?.startEditing("1");
+    await waitForDom(() => expect(editorInputs()).toHaveLength(1));
+
+    // `age` leaves and `name` arrives: the only column the session can now edit is one it never
+    // saw when it opened.
+    await wrapper.setProps({ columns: nameOnly });
+    await waitForDom(() => expect(editorInputs()).toHaveLength(1));
+
+    // Its gate shuts. That is a gate closing on a column this session was editing, so the row
+    // ends — which it cannot know from the snapshot taken at the start.
+    await wrapper.setProps({ columns: readOnlyName });
+
+    await waitForDom(() => expect(document.querySelector("[data-editing-row]")).toBeNull());
+  });
+
+  it("falls back to the last previous it saw when a column's definition goes", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const onRowEditCommit = vi.fn();
+    const narrow: Array<ColumnDef<Person, any>> = [
+      {
+        accessorKey: "age",
+        header: "Age",
+        meta: { edit: numberEditor() }
+      }
+    ];
+    const caroline: Person[] = [
+      {
+        age: 30,
+        id: "1",
+        name: "Caroline"
+      },
+      people[1] as Person
+    ];
+
+    const wrapper = mountTable({
+      columns,
+      data: people,
+      editMode: "row",
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onRowEditCommit
+    });
+
+    handle.value?.startEditing("1");
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    await typeInto(editorInputs()[0] as HTMLInputElement, "Drafted");
+
+    // Somebody else changes the row while the column is still on screen. That is what the
+    // application last knew it to hold.
+    await wrapper.setProps({ data: caroline });
+
+    await waitForDom(() => expect((editorInputs()[0] as HTMLInputElement).value).toBe("Drafted"));
+
+    // The column then leaves the definitions, so only what the session observed can answer.
+    await wrapper.setProps({ columns: narrow });
+    await waitForDom(() => expect(editorInputs()).toHaveLength(1));
+
+    handle.value?.stopEditing({ commit: true });
+
+    await waitForDom(() => expect(onRowEditCommit).toHaveBeenCalledTimes(1));
+    const change = onRowEditCommit.mock.calls[0]?.[0] as { previousValues: Record<string, unknown> };
+    expect(change.previousValues).toEqual({ age: 30, name: "Caroline" });
+  });
 
   it("shows a commit still in flight to an editor that remounted under it", async () => {
     const handle = ref<DataTableHandle<Person> | null>(null);
@@ -909,7 +1353,40 @@ describe("row editing mode", () => {
     expect(elementByText("Name is required")).toBeNull();
   });
 
-  it.todo("does not un-cancel a row when the gate reopens before its write lands: product bug — enableEditing is snapshotted at setup in data-table.vue, so a later enableEditing=false never reaches the editing gate");
+  it("does not un-cancel a row when the gate reopens before its write lands", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const inFlight = Promise.withResolvers<void>();
+    const onEditingRowIdChange = vi.fn();
+
+    const wrapper = mountTable({
+      columns,
+      data: people,
+      editingRowId: "1",
+      editMode: "row",
+      enableEditing: true,
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onEditingRowIdChange,
+      onRowEditCommit: () => inFlight.promise
+    });
+
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    await typeInto(editorInputs()[0] as HTMLInputElement, "Drafted");
+    handle.value?.startEditing("2");
+    await tick();
+    onEditingRowIdChange.mockClear();
+
+    // The gate shuts while the write is out, and reopens before it lands.
+    await wrapper.setProps({ enableEditing: false });
+    await wrapper.setProps({ enableEditing: true });
+
+    await inFlight.resolve();
+    await inFlight.promise;
+    await tick();
+
+    // Losing eligibility ended that session; reopening is the next one's eligibility.
+    expect(onEditingRowIdChange).not.toHaveBeenCalledWith("2");
+  });
 
   it("is read-only when row mode has no commit handler", async () => {
     const handle = ref<DataTableHandle<Person> | null>(null);
@@ -931,7 +1408,38 @@ describe("row editing mode", () => {
     expect(document.querySelector("[data-editing-row]")).toBeNull();
   });
 
-  it.todo("does not revive a row whose gate shut before its data arrived: product bug — enableEditing is snapshotted at setup in data-table.vue, so the shut/reopen cycle the case depends on never reaches the editing gate");
+  it("does not revive a row whose gate shut before its data arrived", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const onRowEditCommit = vi.fn();
+
+    const wrapper = mountTable({
+      columns,
+      data: [],
+      editingRowId: "1",
+      editMode: "row",
+      enableEditing: true,
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onRowEditCommit
+    });
+    await tick();
+    expect(editorInputs()).toHaveLength(0);
+
+    // The table switch shuts and reopens while the row is still not there. The switch is not a
+    // question about the row, so it has to be answered without one.
+    await wrapper.setProps({ enableEditing: false });
+    await wrapper.setProps({ enableEditing: true });
+    await wrapper.setProps({ data: people });
+    await tick();
+
+    // The session that was open when the switch shut is over. Nothing opens by itself.
+    expect(editorInputs()).toHaveLength(0);
+    expect(document.querySelector("[data-editing-row]")).toBeNull();
+
+    // An explicit start is a new session, and it works.
+    handle.value?.startEditing("1");
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+  });
 
   it("focuses the column an explicit start names on the row already open", async () => {
     const handle = ref<DataTableHandle<Person> | null>(null);
@@ -1083,9 +1591,90 @@ describe("row editing mode", () => {
     await expect(pending).resolves.toBe(false);
   });
 
-  it.todo("does not record a row write the data moved out from under in flight: product deviation — useSlice echoes a controlled set optimistically (use-slice.ts), so the echoed close at settle unmounts the editors the case still reads");
+  it("does not record a row write the data moved out from under in flight", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const inFlight = Promise.withResolvers<void>();
+    const committed: Array<{ previousValues: Record<string, unknown>; values: Record<string, unknown> }> = [];
+    const named = (name: string): Person[] => [
+      {
+        age: 30,
+        id: "1",
+        name
+      },
+      people[1] as Person
+    ];
 
-  it.todo("asks a controlled owner to close a lost row session exactly once: product bug — enableEditing is snapshotted at setup in data-table.vue, so a later enableEditing=false never reaches the editing gate");
+    const wrapper = mountTable({
+      columns,
+      data: named("Carol"),
+      editingRowId: "1",
+      editMode: "row",
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onEditingRowIdChange: vi.fn(),
+      onRowEditCommit: (change: {
+        previousValues: Record<string, unknown>;
+        values: Record<string, unknown>;
+      }) => {
+        committed.push({ previousValues: change.previousValues, values: change.values });
+
+        return committed.length === 1 ? inFlight.promise : undefined;
+      }
+    });
+
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    await typeInto(editorInputs()[0] as HTMLInputElement, "First");
+    handle.value?.stopEditing({ commit: true });
+
+    await wrapper.setProps({ data: named("Caroline") });
+    await wrapper.setProps({ data: named("Carol") });
+
+    await inFlight.resolve();
+    await inFlight.promise;
+    await tick();
+
+    await waitForDom(() => expect((editorInputs()[0] as HTMLInputElement).value).toBe("Carol"));
+
+    await typeInto(editorInputs()[1] as HTMLInputElement, "31");
+    handle.value?.stopEditing({ commit: true });
+
+    expect(committed[1]?.previousValues).toEqual({ age: 30, name: "Carol" });
+  });
+
+  it("asks a controlled owner to close a lost row session exactly once", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const onEditingRowIdChange = vi.fn();
+
+    const wrapper = mountTable({
+      columns,
+      data: people,
+      editingRowId: "1",
+      editMode: "row",
+      enableEditing: true,
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onEditingRowIdChange,
+      onRowEditCommit: vi.fn()
+    });
+
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    onEditingRowIdChange.mockClear();
+
+    // The gate shuts and the owner ignores the close. Asking again on every update that happens
+    // to follow is not reconciliation, it is nagging.
+    await wrapper.setProps({ enableEditing: false });
+    await waitForDom(() => expect(onEditingRowIdChange.mock.calls).toEqual([[null]]));
+
+    await wrapper.setProps({ enableEditing: false });
+    await wrapper.setProps({ enableEditing: true });
+    await tick();
+    expect(onEditingRowIdChange.mock.calls).toEqual([[null]]);
+
+    // An explicit stop is a new request, not the same one repeated.
+    handle.value?.stopEditing({ commit: false });
+    await tick();
+    expect(onEditingRowIdChange.mock.calls).toEqual([[null], [null]]);
+  });
 
   it("does not authorize a switch when the commit itself finds the gate shut", async () => {
     const handle = ref<DataTableHandle<Person> | null>(null);
@@ -1132,15 +1721,101 @@ describe("row editing mode", () => {
     expect(onEditingRowIdChange.mock.calls).toEqual([[null]]);
   });
 
-  it.todo("does not authorize a switch away from a row the table-level switch closed: product bug — enableEditing is snapshotted at setup in data-table.vue, so a later enableEditing=false never reaches the editing gate");
+  it("does not authorize a switch away from a row the table-level switch closed", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const onEditingRowIdChange = vi.fn();
 
-  it.todo("takes the row's editors off the screen in the same commit their gate shuts: product bug — enableEditing is snapshotted at setup in data-table.vue, so the gate never shuts and the editors stay");
+    const wrapper = mountTable({
+      columns,
+      data: people,
+      editingRowId: "1",
+      editMode: "row",
+      enableEditing: true,
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onEditingRowIdChange,
+      onRowEditCommit: vi.fn()
+    });
+
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    await typeInto(editorInputs()[0] as HTMLInputElement, "Drafted");
+    onEditingRowIdChange.mockClear();
+
+    // Reconciliation cancels the session and asks once; the owner declines, so the slice goes on
+    // naming this row.
+    await wrapper.setProps({ enableEditing: false });
+    await waitForDom(() => expect(onEditingRowIdChange.mock.calls).toEqual([[null]]));
+
+    handle.value?.startEditing("2");
+    await tick();
+
+    // Editing is off. The commit that has to happen before the switch cannot happen at all, so
+    // the switch does not — and the close it needs is asked for again, because a command is
+    // always a fresh request.
+    expect(onEditingRowIdChange.mock.calls).toEqual([[null], [null]]);
+  });
+
+  it("takes the row's editors off the screen in the same commit their gate shuts", async () => {
+    const wrapper = mountTable({
+      columns,
+      data: people,
+      editingRowId: "1",
+      editMode: "row",
+      enableEditing: true,
+      getRowId: (person: Person) => person.id,
+      onEditingRowIdChange: vi.fn(),
+      onRowEditCommit: vi.fn()
+    });
+
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+
+    // Row mode asks the gate per cell in the render itself, so the editors go with the update
+    // that shut it — never a cycle later, behind the reconciliation that ends the session. Vue
+    // patches the component in one flush, so one nextTick after the prop lands is that frame.
+    await wrapper.setProps({ enableEditing: false });
+
+    expect(editorInputs()).toHaveLength(0);
+  });
 
   it.todo("commits the row on screen, not one a discarded render replaced: React-only machinery — the suspended startTransition the case builds on has no Vue counterpart");
 
   it.todo("commits a row a discarded render removed: React-only machinery — the suspended startTransition the case builds on has no Vue counterpart");
 
-  it.todo("ends a row session whose commit handler went away while its row was absent: product bug — onRowEditCommit is snapshotted at setup in data-table.vue, so removing the handler by prop change never closes the gate");
+  it("ends a row session whose commit handler went away while its row was absent", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const onEditingRowIdChange = vi.fn();
+
+    const wrapper = mountTable({
+      columns,
+      data: people,
+      editingRowId: "1",
+      editMode: "row",
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onEditingRowIdChange,
+      onRowEditCommit: vi.fn()
+    });
+
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    await typeInto(editorInputs()[0] as HTMLInputElement, "Drafted");
+    onEditingRowIdChange.mockClear();
+
+    // The row leaves and the handler goes with it. A row that is not there is a row that has not
+    // arrived; a handler that is not there is the application closing the gate.
+    await wrapper.setProps({ data: [], onRowEditCommit: undefined });
+    await waitForDom(() => expect(onEditingRowIdChange.mock.calls).toEqual([[null]]));
+
+    // Neither the handler coming back nor the row coming back resumes it.
+    await wrapper.setProps({ onRowEditCommit: vi.fn() });
+    await wrapper.setProps({ data: people });
+    await tick();
+    expect(editorInputs()).toHaveLength(0);
+
+    handle.value?.startEditing("1");
+
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    expect((editorInputs()[0] as HTMLInputElement).value).toBe("Carol");
+  });
 
   it("commits a draft whose column was hidden mid-edit", async () => {
     const handle = ref<DataTableHandle<Person> | null>(null);
@@ -1256,7 +1931,43 @@ describe("row editing mode", () => {
     expect(elementByText("Carol")).toBeTruthy();
   });
 
-  it.todo("drops every draft when the table-level switch closes mid-edit: product bug — enableEditing is snapshotted at setup in data-table.vue, so a later enableEditing=false never reaches the editing gate");
+  it("drops every draft when the table-level switch closes mid-edit", async () => {
+    const handle = ref<DataTableHandle<Person> | null>(null);
+    const onRowEditCommit = vi.fn();
+    // The hard case for the rule above: the edited column leaves the definitions *and*
+    // `enableEditing` goes off in the same tick. There is no cell left to test the draft
+    // against, so only the table-level switch can still refuse it.
+    const withoutName: Array<ColumnDef<Person, any>> = [
+      {
+        accessorKey: "age",
+        header: "Age",
+        meta: { edit: numberEditor() }
+      },
+      { accessorKey: "id", header: "Id" }
+    ];
+
+    const wrapper = mountTable({
+      columns,
+      data: people,
+      editMode: "row",
+      enableEditing: true,
+      getRowId: (person: Person) => person.id,
+      handleRef: handle,
+      onRowEditCommit
+    });
+
+    handle.value?.startEditing("1");
+    await waitForDom(() => expect(editorInputs()).toHaveLength(2));
+    await typeInto(editorInputs()[0] as HTMLInputElement, "Drafted");
+
+    await wrapper.setProps({ columns: withoutName, enableEditing: false });
+    await waitForDom(() => expect(editorInputs()).toHaveLength(0));
+
+    handle.value?.stopEditing({ commit: true });
+    await tick();
+
+    expect(onRowEditCommit).not.toHaveBeenCalled();
+  });
 
   it("joins a second commit to the request already in flight", async () => {
     const handle = ref<DataTableHandle<Person> | null>(null);

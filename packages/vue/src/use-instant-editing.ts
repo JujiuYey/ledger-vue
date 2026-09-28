@@ -28,7 +28,11 @@ export interface UseInstantEditingInput<TData extends RowData> {
    * cell's own table, which is the shared core (see `use-committed-table.ts`).
    */
   committed: CommittedTable;
-  onEditCommit: ((change: DataTableEditCommit<TData>) => void | Promise<void>) | undefined;
+  /**
+   * The commit handler, resolved per invocation — a getter so identity and presence answer a
+   * runtime swap the way the React edition's per-render read did.
+   */
+  onEditCommit: () => ((change: DataTableEditCommit<TData>) => void | Promise<void>) | undefined;
 }
 
 interface InstantTarget {
@@ -235,7 +239,7 @@ export function useInstantEditing<TData extends RowData>({
     let result: void | Promise<void>;
 
     try {
-      result = onEditCommit?.({
+      result = onEditCommit()?.({
         column: committed.column(columnId),
         previousValue,
         row,

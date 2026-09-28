@@ -166,6 +166,20 @@ function gatedNameColumn(enabled: boolean): Array<ColumnDef<Person, any>> {
 }
 
 /**
+ * A controlled cell whose owner ignores the close, over one row whose name the test moves.
+ */
+function namedPerson(name: string): Person[] {
+  return [
+    {
+      active: true,
+      id: "1",
+      name
+    },
+    people[1] as Person
+  ];
+}
+
+/**
  * A custom editor over the public editing context — the proof the contexts suffice. Vue
  * renderers return VNode content; `onInput` is the native change channel here.
  */
@@ -183,15 +197,6 @@ const customNameColumn: Array<ColumnDef<Person, any>> = [
     accessorKey: "name",
     header: "Name",
     meta: { edit: customEditorRender }
-  }
-];
-
-/** The custom editor behind a column gate — the reactive stand-in for a shut table switch. */
-const gatedCustomNameColumn = (enabled: boolean): Array<ColumnDef<Person, any>> => [
-  {
-    accessorKey: "name",
-    header: "Name",
-    meta: { edit: { enabled: () => enabled, render: customEditorRender } }
   }
 ];
 
@@ -298,12 +303,10 @@ describe("inline editing", () => {
 
   it("closes the open editor when the table switch shuts under it, without committing", async () => {
     const onEditCommit = vi.fn();
-    // Vue edition: `enableEditing` is captured at mount (use-data-table.ts reads it once), so
-    // the gate the application shuts here is the column's `edit.enabled` — the session logic
-    // under test (canEdit re-read → gate lost → close requested) is the same code path.
     const wrapper = mountTable({
-      columns: gatedNameColumn(true),
+      columns: nameColumn(),
       data: people,
+      enableEditing: true,
       getRowId,
       onEditCommit
     });
@@ -311,7 +314,7 @@ describe("inline editing", () => {
     await dblClickCell("Carol");
     setText(textbox()!, "Drafted");
 
-    await wrapper.setProps({ columns: gatedNameColumn(false) });
+    await wrapper.setProps({ enableEditing: false });
     await tick();
 
     // The gate the application just shut is the whole point: the editor leaves and the draft
@@ -343,10 +346,10 @@ describe("inline editing", () => {
   it("cancels an ineligible editor once the request that refused the cancel rejects", async () => {
     const inFlight = Promise.withResolvers<void>();
     const onEditCommit = vi.fn(() => inFlight.promise);
-    // Vue edition: the gate is the column's `edit.enabled` (enableEditing is mount-time here).
     const wrapper = mountTable({
       columns: nameColumn(),
       data: people,
+      enableEditing: true,
       getRowId,
       onEditCommit
     });
@@ -360,7 +363,7 @@ describe("inline editing", () => {
     // The gate closes while the write is in flight. The editor goes at once — nothing under a
     // closed gate may be typed into — while the write itself is left to finish, because that
     // value passed the gate before it shut.
-    await wrapper.setProps({ columns: gatedNameColumn(false) });
+    await wrapper.setProps({ enableEditing: false });
     await tick();
     expect(textbox()).toBeNull();
 
@@ -375,9 +378,84 @@ describe("inline editing", () => {
     expect(onEditCommit).toHaveBeenCalledTimes(1);
   });
 
-  it.todo("commits again after the application declines to close the controlled cell: product bug — useSlice's controlled optimistic echo clears the editingCell slice even when the owner ignores onEditingCellChange, so the editor leaves instead of staying live");
+  it("commits again after the application declines to close the controlled cell", async () => {
+    const onEditCommit = vi.fn();
+    // A controlled slice whose owner ignores the change keeps this editor on screen, and an
+    // editor on screen is a live one: the next value typed into it is a second edit.
+    const onEditingCellChange = vi.fn();
 
-  it.todo("tells a custom editor that its write is still out: product bug — the controlled optimistic echo unmounts the editor when the settle requests a close the owner declines, so the post-resolve pending assertion has nothing to read");
+    mountTable({
+      columns: nameColumn(),
+      data: people,
+      editingCell: { columnId: "name", rowId: "1" },
+      getRowId,
+      onEditCommit,
+      onEditingCellChange
+    });
+    await tick();
+
+    setText(textbox()!, "First");
+    press(textbox()!, "Enter");
+    await tick();
+
+    expect(onEditCommit).toHaveBeenCalledTimes(1);
+    expect(onEditingCellChange).toHaveBeenCalledWith(null);
+
+    setText(textbox()!, "Second");
+    press(textbox()!, "Enter");
+    await tick();
+
+    expect(onEditCommit).toHaveBeenCalledTimes(2);
+    expect(onEditCommit.mock.calls[1]?.[0]).toMatchObject({
+      previousValue: "First",
+      value: "Second"
+    });
+  });
+
+  it("tells a custom editor that its write is still out", async () => {
+    const inFlight = Promise.withResolvers<void>();
+    // The host never disables a custom editor — it cannot know what to disable — so the flag has
+    // to reach the editor for it to decide anything at all.
+    const pendingEditor: DataTableEditRenderer<Person, any> = ({ value, setValue, pending }) => [
+      h("input", {
+        "aria-label": "Edit Name",
+        disabled: pending,
+        value: value === null || value === undefined ? "" : String(value),
+        onInput: (event: Event) => setValue((event.target as HTMLInputElement).value)
+      })
+    ];
+    const pendingName: Array<ColumnDef<Person, any>> = [
+      {
+        accessorKey: "name",
+        header: "Name",
+        meta: { edit: pendingEditor }
+      }
+    ];
+
+    mountTable({
+      columns: pendingName,
+      data: people,
+      editingCell: { columnId: "name", rowId: "1" },
+      getRowId,
+      onEditCommit: () => inFlight.promise,
+      onEditingCellChange: vi.fn()
+    });
+    await tick();
+
+    expect(textbox()!.disabled).toBe(false);
+
+    setText(textbox()!, "First");
+    press(textbox()!, "Enter");
+    await tick();
+    expect(textbox()!.disabled).toBe(true);
+
+    inFlight.resolve();
+    await inFlight.promise;
+    await tick();
+
+    // The owner declined to close the cell, so the editor is still here — and no longer waiting.
+    expect(textbox()!.disabled).toBe(false);
+  });
 
   it("still commits a value typed while an async cell commit was in flight", async () => {
     const inFlight = Promise.withResolvers<void>();
@@ -513,11 +591,11 @@ describe("inline editing", () => {
     const inFlight = Promise.withResolvers<void>();
     const onEditingCellChange = vi.fn();
 
-    // Vue edition: the gate is the column's `edit.enabled` (enableEditing is mount-time here).
     const wrapper = mountTable({
-      columns: gatedNameColumn(true),
+      columns: nameColumn(),
       data: people,
       editingCell: { columnId: "name", rowId: "1" },
+      enableEditing: true,
       getRowId,
       handleRef,
       onEditCommit: () => inFlight.promise,
@@ -532,7 +610,7 @@ describe("inline editing", () => {
     await tick();
     onEditingCellChange.mockClear();
 
-    await wrapper.setProps({ columns: gatedNameColumn(false) });
+    await wrapper.setProps({ enableEditing: false });
     await tick();
 
     inFlight.resolve();
@@ -545,11 +623,106 @@ describe("inline editing", () => {
     expect(onEditingCellChange.mock.calls.filter(call => call[0] === null)).toHaveLength(1);
   });
 
-  it.todo("can still be closed after a commit the controlled owner declined to act on: product bug — the controlled optimistic echo already cleared the slice at the declined close, so the follow-up Escape/Enter requests have no editor left to act on");
+  it("can still be closed after a commit the controlled owner declined to act on", async () => {
+    const onEditCommit = vi.fn();
+    const onEditingCellChange = vi.fn();
 
-  it.todo("follows the data past the value it acknowledged, when the owner keeps it open: product bug — the controlled optimistic echo closes the editor at the declined close, so the acknowledged-value feedback and the second commit have no live session to run in");
+    mountTable({
+      columns: nameColumn(),
+      data: people,
+      editingCell: { columnId: "name", rowId: "1" },
+      getRowId,
+      onEditCommit,
+      onEditingCellChange
+    });
+    await tick();
 
-  it.todo("does not bring a written value back when the data returns to what it departed from: product bug — the controlled optimistic echo closes the editor at the declined close, so the written-record retirement cannot be observed through a live editor");
+    setText(textbox()!, "First");
+    press(textbox()!, "Enter");
+    await tick();
+    expect(onEditCommit).toHaveBeenCalledTimes(1);
+
+    onEditingCellChange.mockClear();
+
+    // The owner ignored the first request, so the editor is still here. Escape is a new request
+    // to close it, not a repeat of one already answered.
+    press(textbox()!, "Escape");
+    await tick();
+    expect(onEditingCellChange).toHaveBeenCalledWith(null);
+
+    onEditingCellChange.mockClear();
+
+    // And so is Enter — which has nothing new to send, so it sends nothing.
+    press(textbox()!, "Enter");
+    await tick();
+    expect(onEditingCellChange).toHaveBeenCalledWith(null);
+    expect(onEditCommit).toHaveBeenCalledTimes(1);
+  });
+
+  it("follows the data past the value it acknowledged, when the owner keeps it open", async () => {
+    const committed: Array<{ previousValue: unknown; value: unknown }> = [];
+
+    const wrapper = mountTable({
+      columns: nameColumn(),
+      data: people,
+      editingCell: { columnId: "name", rowId: "1" },
+      getRowId,
+      onEditCommit: (change: { previousValue: unknown; value: unknown }) => {
+        committed.push({ previousValue: change.previousValue, value: change.value });
+      },
+      onEditingCellChange: vi.fn()
+    });
+    await tick();
+
+    setText(textbox()!, "First");
+    press(textbox()!, "Enter");
+    await tick();
+    expect(committed).toEqual([{ previousValue: "Carol", value: "First" }]);
+
+    // The owner ignored the close and fed back a normalized value. That is what the cell holds
+    // now, and what the editor still on screen has to show.
+    await wrapper.setProps({ data: namedPerson("FIRST") });
+    await tick();
+    await tick();
+
+    expect(textbox()!.value).toBe("FIRST");
+
+    setText(textbox()!, "Second");
+    press(textbox()!, "Enter");
+    await tick();
+
+    expect(committed[1]).toEqual({ previousValue: "FIRST", value: "Second" });
+  });
+
+  it("does not bring a written value back when the data returns to what it departed from", async () => {
+    const wrapper = mountTable({
+      columns: nameColumn(),
+      data: namedPerson("Carol"),
+      editingCell: { columnId: "name", rowId: "1" },
+      getRowId,
+      onEditCommit: vi.fn(),
+      onEditingCellChange: vi.fn()
+    });
+    await tick();
+
+    setText(textbox()!, "First");
+    press(textbox()!, "Enter");
+    await tick();
+
+    // The write lands in the data...
+    await wrapper.setProps({ data: namedPerson("First") });
+    await tick();
+    await tick();
+    expect(textbox()!.value).toBe("First");
+
+    // ...and is then reverted by somebody else. That is the data's own value now, not ours
+    // resurfacing because it happens to match what the write departed from.
+    await wrapper.setProps({ data: namedPerson("Carol") });
+    await tick();
+    await tick();
+
+    expect(textbox()!.value).toBe("Carol");
+  });
 
   it("hands a remounted editor the session it belongs to", async () => {
     const handleRef = ref<DataTableHandle<Person> | null>(null);
@@ -639,7 +812,40 @@ describe("inline editing", () => {
     expect(textbox()!.value).toBe("First");
   });
 
-  it.todo("does not un-cancel a session when the gate reopens before its write lands: product deviation — Vue reconciles eligibility only on slice moves and editor registers (use-cell-editing.ts), so a gate that shuts and reopens around an in-flight write with no session traffic never latches the cancel the React edition latches per render");
+  it("does not un-cancel a session when the gate reopens before its write lands", async () => {
+    const handleRef = ref<DataTableHandle<Person> | null>(null);
+    const inFlight = Promise.withResolvers<void>();
+
+    const wrapper = mountTable({
+      columns: nameColumn(),
+      data: people,
+      enableEditing: true,
+      getRowId,
+      handleRef,
+      onEditCommit: () => inFlight.promise
+    });
+
+    await dblClickCell("Carol");
+    setText(textbox()!, "First");
+
+    // Asking for Alice's cell commits this one first and waits on the write.
+    handleRef.value?.startEditing("2", "name");
+    await tick();
+
+    // The gate shuts while the write is out, and reopens before it lands.
+    await wrapper.setProps({ enableEditing: false });
+    await tick();
+    await wrapper.setProps({ enableEditing: true });
+    await tick();
+
+    inFlight.resolve();
+    await inFlight.promise;
+    await tick();
+
+    // Losing eligibility ended that session. A gate reopening is the next session's eligibility,
+    // not a reprieve for the one that was cancelled — so nothing opens on its behalf.
+    expect(textbox()).toBeNull();
+  });
 
   it("does not let a departing cell's tick commit the one that replaced it", async () => {
     const handleRef = ref<DataTableHandle<Person> | null>(null);
@@ -716,11 +922,11 @@ describe("inline editing", () => {
   it("keeps a cell whose gate shut from rendering an editor again", async () => {
     const handleRef = ref<DataTableHandle<Person> | null>(null);
 
-    // Vue edition: the gate is the column's `edit.enabled` (enableEditing is mount-time here).
     const wrapper = mountTable({
-      columns: gatedCustomNameColumn(true),
+      columns: customNameColumn,
       data: people,
       editingCell: { columnId: "name", rowId: "1" },
+      enableEditing: true,
       getRowId,
       handleRef,
       onEditCommit: vi.fn(),
@@ -732,17 +938,13 @@ describe("inline editing", () => {
 
     // The gate shuts. A custom editor is never disabled by anything the host does, so the only
     // way it stops being interactive is by not being there.
-    await wrapper.setProps({ columns: gatedCustomNameColumn(false) });
-    await tick();
-    // The departure tick's commit re-reads the gate: the draft is discarded and the close is
-    // requested, not the write pushed through.
-    await macrotask();
+    await wrapper.setProps({ enableEditing: false });
     await tick();
     expect(textbox()).toBeNull();
 
-    // The gate reopening is the next session's eligibility, not a reprieve for the one that was
-    // cancelled.
-    await wrapper.setProps({ columns: gatedCustomNameColumn(true) });
+    // The owner declined to clear the slice, so it still names this cell. The gate reopening is
+    // the next session's eligibility, not a reprieve for the one that was cancelled.
+    await wrapper.setProps({ enableEditing: true });
     await tick();
     expect(textbox()).toBeNull();
 
@@ -754,16 +956,66 @@ describe("inline editing", () => {
     expect(textbox()!.value).toBe("Carol");
   });
 
-  it.todo("does not carry a cancelled session's pending commit into the one restarting it: product deviation — the unmounting editor's departure tick joins the in-flight commit instead of re-reading the gate (use-cell-editing.ts register cleanup), so the gate-shut/reopen interleave never latches the cancel the React edition's per-render reconciliation latches");
+  it("does not carry a cancelled session's pending commit into the one restarting it", async () => {
+    const handleRef = ref<DataTableHandle<Person> | null>(null);
+    const inFlight = Promise.withResolvers<void>();
+    const onEditCommit = vi.fn(() => inFlight.promise);
+
+    const wrapper = mountTable({
+      columns: nameColumn(),
+      data: people,
+      editingCell: { columnId: "name", rowId: "1" },
+      enableEditing: true,
+      getRowId,
+      handleRef,
+      onEditCommit,
+      onEditingCellChange: vi.fn()
+    });
+    await tick();
+
+    setText(textbox()!, "First");
+    press(textbox()!, "Enter");
+    await tick();
+    expect(textbox()!.disabled).toBe(true);
+
+    // The gate shuts while that write is still out, and reopens. The session is cancelled either
+    // way, and the owner declined to close it, so the slice still names this cell.
+    await wrapper.setProps({ enableEditing: false });
+    await tick();
+    await wrapper.setProps({ enableEditing: true });
+    await tick();
+    expect(textbox()).toBeNull();
+
+    // The next session opens on the same cell. Nothing the cancelled one held may come with it —
+    // least of all a write whose settlement will find a token that no longer matches, and so will
+    // never clear the flag it set.
+    handleRef.value?.startEditing("1", "name");
+    await eventually(() => textbox() !== null, "restarted editor never appeared");
+
+    const input = textbox()!;
+
+    expect(input.disabled).toBe(false);
+    expect(input.value).toBe("Carol");
+    expect(q("[data-pending]")).toBeNull();
+
+    // And what a live session can do, this one can do: type, and cancel.
+    setText(input, "Second");
+    expect(textbox()!.value).toBe("Second");
+
+    press(textbox()!, "Escape");
+    await tick();
+    expect(textbox()!.value).toBe("Carol");
+  });
 
   it("takes an editor off the screen in the same commit its gate shuts", async () => {
     // React proved this in the layout phase (useLayoutEffect probing the frame as it will be
     // painted). Vue flushes render, DOM patch and post-flush watchers in one pre-paint cycle,
     // so the counterpart is the DOM right after the flush that carried the gate change.
     const wrapper = mountTable({
-      columns: gatedCustomNameColumn(true),
+      columns: customNameColumn,
       data: people,
       editingCell: { columnId: "name", rowId: "1" },
+      enableEditing: true,
       getRowId,
       onEditCommit: vi.fn(),
       onEditingCellChange: vi.fn()
@@ -775,7 +1027,7 @@ describe("inline editing", () => {
     // runs after the flush — but whether an editor is on the screen is a question this render
     // can answer for itself, and this render already knows the gate is shut. A frame with a live
     // editor behind a closed gate is one the user can type into.
-    await wrapper.setProps({ columns: gatedCustomNameColumn(false) });
+    await wrapper.setProps({ enableEditing: false });
     await nextTick();
 
     expect(q(".ledger-cell-editor input")).toBeNull();
@@ -801,7 +1053,48 @@ describe("inline editing", () => {
     expect(textbox()!.value).toBe("Carol");
   });
 
-  it.todo("does not record a write the data moved out from under while it was in flight: product bug — the controlled optimistic echo closes the editor when the settle requests a close the owner declines, so the follow-up edit that proves the record was retired has no live session");
+  it("does not record a write the data moved out from under while it was in flight", async () => {
+    const inFlight = Promise.withResolvers<void>();
+    const committed: Array<{ previousValue: unknown; value: unknown }> = [];
+
+    const wrapper = mountTable({
+      columns: customNameColumn,
+      data: namedPerson("Carol"),
+      editingCell: { columnId: "name", rowId: "1" },
+      getRowId,
+      onEditCommit: (change: { previousValue: unknown; value: unknown }) => {
+        committed.push({ previousValue: change.previousValue, value: change.value });
+
+        return committed.length === 1 ? inFlight.promise : undefined;
+      },
+      onEditingCellChange: vi.fn()
+    });
+    await tick();
+
+    setText(textbox()!, "First");
+    press(textbox()!, "Enter");
+    await tick();
+
+    // While the write is out, somebody else moves the row — and then moves it back. The data did
+    // move, even though where it landed is where the write departed from.
+    await wrapper.setProps({ data: namedPerson("Caroline") });
+    await tick();
+    await wrapper.setProps({ data: namedPerson("Carol") });
+    await tick();
+
+    inFlight.resolve();
+    await inFlight.promise;
+    await tick();
+
+    // So there is nothing for the write to still be true about: the data is what the cell holds.
+    expect(textbox()!.value).toBe("Carol");
+
+    setText(textbox()!, "Second");
+    press(textbox()!, "Enter");
+    await tick();
+
+    expect(committed[1]).toEqual({ previousValue: "Carol", value: "Second" });
+  });
 
   it("re-registers its editors when the table it belongs to is replaced", async () => {
     mountHost(SwappableTable);
@@ -866,45 +1159,98 @@ describe("inline editing", () => {
     expect(onEditingCellChange.mock.calls).toEqual([[null]]);
   });
 
-  it.todo("asks again to close a cancelled session when an explicit stop commits it: product bug — the first close request's controlled optimistic echo ends the session, so the explicit stops that must each re-ask find no session to ask for");
+  it("asks again to close a cancelled session when an explicit stop commits it", async () => {
+    const handleRef = ref<DataTableHandle<Person> | null>(null);
+    const onEditingCellChange = vi.fn();
 
-  it.todo("closes a session whose target never arrived when asked to: product bug — the first stop's close request echoes through the controlled slice and ends the session, so the second stop never re-asks");
+    const wrapper = mountTable({
+      columns: customNameColumn,
+      data: people,
+      editingCell: { columnId: "name", rowId: "1" },
+      enableEditing: true,
+      getRowId,
+      handleRef,
+      onEditCommit: vi.fn(),
+      onEditingCellChange
+    });
+    await tick();
+
+    setText(textbox()!, "Drafted");
+    onEditingCellChange.mockClear();
+
+    // The gate shuts. Reconciliation cancels the session and asks once; the owner declines, so
+    // the slice goes on naming this cell — and reconciliation will not ask again.
+    await wrapper.setProps({ enableEditing: false });
+    await tick();
+    expect(onEditingCellChange.mock.calls).toEqual([[null]]);
+
+    // A committed render with the gate still shut — the React rerender over the same false
+    // switch — does not remake the ask.
+    await wrapper.setProps({ data: [...people] });
+    await tick();
+    expect(onEditingCellChange.mock.calls).toEqual([[null]]);
+
+    // An explicit stop is a command, and a command is always a new request — whichever way it is
+    // spelled. `commit: true` has nothing left to send, but it still wants the cell closed.
+    handleRef.value?.stopEditing({ commit: true });
+    await tick();
+    expect(onEditingCellChange.mock.calls).toEqual([[null], [null]]);
+
+    handleRef.value?.stopEditing({ commit: false });
+    await tick();
+    expect(onEditingCellChange.mock.calls).toEqual([[null], [null], [null]]);
+  });
+
+  it("closes a session whose target never arrived when asked to", async () => {
+    const handleRef = ref<DataTableHandle<Person> | null>(null);
+    const onEditingCellChange = vi.fn();
+
+    mountTable({
+      columns: customNameColumn,
+      data: [] as Person[],
+      editingCell: { columnId: "name", rowId: "late" },
+      getRowId,
+      handleRef,
+      onEditCommit: vi.fn(),
+      onEditingCellChange
+    });
+    await tick();
+
+    // Nothing to commit — but an explicit stop is still a request to leave, and a session waiting
+    // for a row that never came has to be closable.
+    handleRef.value?.stopEditing();
+    await tick();
+    expect(onEditingCellChange.mock.calls).toEqual([[null]]);
+
+    // The owner ignored it, so asking again is a new request, not the same one repeated.
+    onEditingCellChange.mockClear();
+    handleRef.value?.stopEditing();
+    await tick();
+    expect(onEditingCellChange.mock.calls).toEqual([[null]]);
+  });
 
   it("commits through the handler as it is now, not as the row last saw it", async () => {
     const seen: number[] = [];
+    const handlerFor = (count: number) => () => {
+      seen.push(count);
+    };
 
-    const Host = defineComponent({
-      setup() {
-        const count = ref(0);
-
-        return () => [
-          h("button", { type: "button", onClick: () => { count.value += 1; } }, "tick"),
-          h(DataTable as never, {
-            columns: nameColumn(),
-            data: people,
-            editingCell: { columnId: "name", rowId: "1" },
-            getRowId,
-            // Vue edition: handlers are stable closures defined in setup (useEventCallback has
-            // no equivalent, and use-data-table.ts captures handler props at mount), so the
-            // React test's per-render identity churn has no counterpart. The live read this
-            // port keeps honest is the state the handler closes over: nothing in the row may
-            // hold the value — the write goes through the session, at commit time.
-            onEditCommit: () => {
-              seen.push(count.value);
-            },
-            onEditingCellChange: vi.fn()
-          })
-        ];
-      }
+    const wrapper = mountTable({
+      columns: nameColumn(),
+      data: people,
+      editingCell: { columnId: "name", rowId: "1" },
+      getRowId,
+      onEditCommit: handlerFor(0),
+      onEditingCellChange: vi.fn()
     });
-
-    mountHost(Host);
     await tick();
 
-    buttonByName("tick")?.click();
-    await tick();
-    buttonByName("tick")?.click();
-    await tick();
+    // A handler swapped at runtime is a new identity with no data or definition change beside it
+    // — nothing in the row re-renders for it, so nothing in the row may be holding the handler
+    // it saw. The write goes through the session, whose read always reaches the handler as it
+    // is now.
+    await wrapper.setProps({ onEditCommit: handlerFor(1) });
+    await wrapper.setProps({ onEditCommit: handlerFor(2) });
 
     setText(textbox()!, "Drafted");
     press(textbox()!, "Enter");
@@ -975,7 +1321,45 @@ describe("inline editing", () => {
     expect(validated).toEqual(["Drafted"]);
   });
 
-  it.todo("ends a session whose commit handler went away while its row was absent: product limitation — onEditCommit presence is part of the mount-time gate (use-data-table.ts captures it once), so the handler cannot go away at runtime");
+  it("ends a session whose commit handler went away while its row was absent", async () => {
+    const handleRef = ref<DataTableHandle<Person> | null>(null);
+    const onEditingCellChange = vi.fn();
+
+    const wrapper = mountTable({
+      columns: customNameColumn,
+      data: people,
+      editingCell: { columnId: "name", rowId: "1" },
+      getRowId,
+      handleRef,
+      onEditCommit: vi.fn(),
+      onEditingCellChange
+    });
+    await tick();
+
+    setText(textbox()!, "Drafted");
+    onEditingCellChange.mockClear();
+
+    // The row leaves and the handler goes with it. A row that is not there is a row that has not
+    // arrived — but a handler that is not there is the application closing the gate, and the two
+    // must not be confused just because they happened together.
+    await wrapper.setProps({ data: [] as Person[], onEditCommit: undefined });
+    await tick();
+    expect(onEditingCellChange.mock.calls).toEqual([[null]]);
+
+    // The handler comes back while the row is still away, then the row comes back. Neither is a
+    // session resuming: the gate shut, and the loss latches.
+    await wrapper.setProps({ data: [] as Person[], onEditCommit: vi.fn() });
+    await tick();
+    await wrapper.setProps({ data: people, onEditCommit: vi.fn() });
+    await tick();
+    expect(textbox()).toBeNull();
+
+    // Only an explicit start opens the next one, with nothing the old one held.
+    handleRef.value?.startEditing("1", "name");
+    await eventually(() => textbox() !== null, "restarted editor never appeared");
+
+    expect(textbox()!.value).toBe("Carol");
+  });
 
   it("tabs to the neighbour on screen, not one a discarded render rearranged", async () => {
     const onEditingCellChange = vi.fn();
@@ -1024,9 +1408,14 @@ describe("inline editing", () => {
     await tick();
     expect(textbox()!.value).toBe("CAROL");
 
-    // (The React test's third beat — discarding the draft against an accessor only a thrown-away
-    // render ever held — has no Vue counterpart; nor can a cancelled editor's redraw be observed
-    // under a declining owner, whose slice the Vue edition echoes closed.)
+    // And a cancelled editor redraws under a declining owner: the draft is discarded and what it
+    // draws is still the render's own answer. (The React test reached this beat through a
+    // Suspense-discarded render, which Vue has no counterpart for.)
+    setText(textbox()!, "Drafted");
+    press(textbox()!, "Escape");
+    await tick();
+
+    expect(textbox()!.value).toBe("CAROL");
   });
 
   it("tabs in pinned display order, not definition order", async () => {

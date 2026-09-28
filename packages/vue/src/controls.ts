@@ -21,34 +21,62 @@ import { PopoverAnchor, PopoverContent, PopoverPortal, PopoverRoot } from "reka-
 
 /**
  * A debounce with an explicit cancel — the Vue counterpart of `useDebouncedCallback`. The timer
- * is cleared when the creating scope disposes, so a pending write never fires after unmount
- * (the React edition's `flushOnUnmount` semantics inverted: Vue calls cancel explicitly instead).
+ * is cleared when the creating scope disposes, so a pending write never fires after unmount —
+ * or, with `flushOnDispose`, the pending write FIRES on dispose (the React edition's
+ * `flushOnUnmount`: closing the filter popover commits what was typed, never drops it).
  */
 export interface Debouncer<Args extends unknown[] = unknown[]> {
   run: (...args: Args) => void;
   cancel: () => void;
+  flush: () => void;
 }
 
-export function createDebouncer<Args extends unknown[]>(fn: (...args: Args) => void, delay: () => number): Debouncer<Args> {
+export function createDebouncer<Args extends unknown[]>(
+  fn: (...args: Args) => void,
+  delay: () => number,
+  options?: { flushOnDispose?: boolean }
+): Debouncer<Args> {
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let pending: Args | undefined;
 
   const cancel = () => {
     if (timer !== undefined) {
       clearTimeout(timer);
       timer = undefined;
     }
+    pending = undefined;
+  };
+
+  const flush = () => {
+    if (timer !== undefined && pending !== undefined) {
+      const args = pending;
+
+      cancel();
+      fn(...args);
+    }
   };
 
   if (getCurrentScope()) {
-    onScopeDispose(cancel);
+    onScopeDispose(options?.flushOnDispose ? flush : cancel);
   }
 
   return {
     run: (...args: Args) => {
       cancel();
-      timer = setTimeout(() => fn(...args), delay());
+      pending = args;
+      timer = setTimeout(() => {
+        const queued = pending;
+
+        timer = undefined;
+        pending = undefined;
+
+        if (queued !== undefined) {
+          fn(...queued);
+        }
+      }, delay());
     },
-    cancel
+    cancel,
+    flush
   };
 }
 

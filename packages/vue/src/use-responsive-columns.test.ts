@@ -174,12 +174,7 @@ describe("useResponsiveColumns", () => {
   });
 
   it("keeps a breakpoint value that contains commas in one piece", () => {
-    // A breakpoint is any CSS length the author writes, and clamp() carries commas. The runtime
-    // maps an unrecognized value through as its own CSS length (use-responsive-columns.ts
-    // documents exactly that), but the ported meta type narrows to the stock scale where the
-    // React edition's MantineBreakpoint resolved to plain `string` — the clamp() rides a
-    // localized cast (type-surface gap, recorded).
-    const clamped = "clamp(30em, 50vw, 60em)" as "xs" | "sm" | "md" | "lg" | "xl";
+    const clamped = "clamp(30em, 50vw, 60em)";
     const custom: Array<ColumnDef<Person, any>> = [
       { accessorKey: "name", header: "Name" },
       {

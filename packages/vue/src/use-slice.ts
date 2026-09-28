@@ -1,6 +1,6 @@
 import type { Updater } from "@tanstack/vue-table";
-import type { Ref } from "vue";
-import { ref, toValue, watch } from "vue";
+import type { ComputedRef, Ref } from "vue";
+import { computed, ref, toValue, watch } from "vue";
 
 import { functionalUpdate } from "@tanstack/vue-table";
 
@@ -10,13 +10,19 @@ import { functionalUpdate } from "@tanstack/vue-table";
  * receiving the resolved value. TanStack hands us `Updater`s; they are resolved here so consumer
  * callbacks never see a function.
  *
- * Vue edition: there is no concurrent rendering to tear a read away from a commit — the whole
- * requested-value machinery the React edition carries collapses to one rule. The internal ref
- * mirrors the controlled prop whenever it moves (the owner's answer, normalization included),
- * and a `set` writes the resolved value into the ref first: in uncontrolled mode that IS the
- * state; in controlled mode it is the optimistic echo that stands until the owner answers or
- * declines through the prop. Either way `onChange` fires with the resolved value, never a
- * function.
+ * Vue edition: the slice reads through one computed — the controlled prop while the owner holds
+ * the slice, the internal ref the moment it does not — and a `set` resolves its updater against
+ * what that computed says before writing the resolved value into the internal ref and reporting
+ * it. In controlled mode the owner is the authority: moving `value` is it answering (accepted,
+ * normalized, or replaced — the mirror watch carries the answer into the ref, so a later
+ * handover to uncontrolled departs from the owner's last word), and silence is a refusal — the
+ * on-screen value never echoes a request the owner declined, and the next event departs from
+ * what is on screen. That is the React edition's contract verbatim; its requested-value ledger
+ * only existed to keep updaters honest across React's commit windows, which Vue's synchronous
+ * reactivity does not have.
+ *
+ * `undefined` is the only "not controlled" signal — `null` is a value several slices legitimately
+ * hold (the editing cells) — so every controlled-ness check compares against `undefined`.
  */
 export type SliceSetter<T> = (updater: Updater<T>) => void;
 
@@ -41,9 +47,9 @@ export function useSlice<T>({
   onChange,
   onSet,
   fallback
-}: UseSliceInput<T>): readonly [Ref<T>, SliceSetter<T>] {
+}: UseSliceInput<T>): readonly [ComputedRef<T>, SliceSetter<T>] {
   const initial = toValue(value);
-  const internal = ref<T>((initial ?? defaultValue ?? fallback)) as Ref<T>;
+  const internal = ref<T>(initial !== undefined ? initial : (defaultValue !== undefined ? defaultValue : fallback)) as Ref<T>;
 
   // The owner's answer — accepted, normalized, or replaced — reaches the ref here. Equality
   // writes are no-ops by ref semantics, so an acceptance echo costs nothing.
@@ -53,13 +59,21 @@ export function useSlice<T>({
     }
   });
 
+  // Controlled: the owner's prop is the on-screen value, full stop. Uncontrolled: the internal
+  // ref is the state.
+  const current = computed<T>(() => {
+    const controlled = toValue(value);
+
+    return controlled !== undefined ? controlled : internal.value;
+  });
+
   const set = (updater: Updater<T>): void => {
-    const next = functionalUpdate(updater, internal.value);
+    const next = functionalUpdate(updater, current.value);
 
     onSet?.(next);
     internal.value = next;
     onChange?.(next);
   };
 
-  return [internal, set] as const;
+  return [current, set] as const;
 }
