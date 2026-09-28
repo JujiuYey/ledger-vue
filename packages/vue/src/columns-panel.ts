@@ -141,25 +141,6 @@ const pinSegments: Array<{
  * indistinguishable from a canceled one downstream. (`@dnd-kit/helpers`' `move`, reduced to what
  * a zone reorder needs — the Vue package ships without the helpers dependency.)
  */
-function moveId(ids: string[], sourceId: string, targetId: string | undefined): string[] {
-  if (targetId === undefined) {
-    return ids;
-  }
-
-  const from = ids.indexOf(sourceId);
-  const to = ids.indexOf(targetId);
-
-  if (from === -1 || to === -1 || from === to) {
-    return ids;
-  }
-
-  const next = [...ids];
-  next.splice(from, 1);
-  next.splice(to, 0, sourceId);
-
-  return next;
-}
-
 export const DataTableColumnsPanel = defineComponent({
   name: "DataTableColumnsPanel",
   props: {
@@ -286,21 +267,42 @@ const ColumnsPanelContent = defineComponent({
       // operation.target does not resolve reliably here (the panel is teleported to the body,
       // where dnd-kit's collision shapes repeatedly come up empty), and the drop still has to
       // land between the rows the user actually pointed at.
-      const position = event.operation.position.current;
-      const rows = [...(listEl.value?.querySelectorAll("[data-column-id]") ?? [])];
-      let targetId: string | null = null;
+      // The insertion index is counted over the zone's own rows EXCLUDING the dragged one:
+      // dnd-kit live-reorders the DOM during the drag and the dragged row follows the pointer,
+      // so probing the full list always resolves to the source itself. The non-source rows keep
+      // their relative order while they shift, so an index counted over them (by midpoint,
+      // against the dragged row's drop rectangle — `shape.current`, which keyboard drags also
+      // produce; the pointer position stands in when a host omits the shape) maps straight onto
+      // the pre-drag `ids` order.
+      const shape = event.operation.shape?.current?.boundingRectangle;
+      const probeY = shape
+        ? shape.top + shape.height / 2
+        : event.operation.position.current.y;
+      const sourceId = String(source.id);
+      const allRows = [...(listEl.value?.querySelectorAll("[data-column-id]") ?? [])];
+      const sourceRow = allRows.find(row => row.getAttribute("data-column-id") === sourceId);
+      const zoneEl = sourceRow?.closest(".ledger-columns-panel-zone");
+      const scopedRows = zoneEl ? [...zoneEl.querySelectorAll("[data-column-id]")] : allRows;
 
-      for (const row of rows) {
-        if (position.y < row.getBoundingClientRect().bottom) {
-          targetId = row.getAttribute("data-column-id");
-          break;
+      let insertAt = 0;
+
+      for (const row of scopedRows) {
+        if (row.getAttribute("data-column-id") === sourceId) {
+          continue;
+        }
+
+        const rect = row.getBoundingClientRect();
+
+        if (rect.y + rect.height / 2 < probeY) {
+          insertAt += 1;
         }
       }
 
-      targetId ??= rows.at(-1)?.getAttribute("data-column-id") ?? null;
-      const next = moveId(ids, String(source.id), targetId ?? undefined);
+      const next = [...ids];
+      next.splice(next.indexOf(sourceId), 1);
+      next.splice(Math.min(insertAt, next.length), 0, sourceId);
 
-      if (next === ids) {
+      if (next.join(",") === ids.join(",")) {
         return;
       }
 
