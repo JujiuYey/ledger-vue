@@ -44,6 +44,9 @@
    * mount outside the table root and still have to resolve every var().
    * ------------------------------------------------------------------------------------------ */
   :root {
+    /* Shared scrollbar metric: consumed by every reka ScrollArea surface (the table scroller
+       and the columns panel list alike), so it lives with the tokens, not on one consumer. */
+    --ledger-scrollbar-size: 12px;
     --ledger-color-body: #ffffff;
     --ledger-color-default-border: #dee2e6;
     --ledger-color-default-hover: rgb(0 0 0 / 4.5%);
@@ -186,8 +189,6 @@
      coordinate space and rides out of view on scroll. Same seat `.ledger-scroller` holds in
      the React edition. */
   .ledger-scroller {
-    /* The floating scrollbar scale (Mantine's --scrollarea-scrollbar-size twin; 0.75rem). */
-    --ledger-scrollbar-size: 12px;
     position: relative;
     flex: 1 1 auto;
     min-height: 0;
@@ -221,7 +222,8 @@
     transition: background-color 150ms ease;
   }
 
-  .ledger-scroller:hover .ledger-scrollbar {
+  .ledger-scroller:hover .ledger-scrollbar,
+  .ledger-columns-panel:hover .ledger-scrollbar {
     visibility: visible;
     pointer-events: auto;
   }
@@ -888,12 +890,26 @@
     border-block-end: 1px solid var(--ledger-color-default-border);
   }
 
+  /* The list is the ScrollArea root (reka renders it through as-child): it owns the seat and
+     the elastic height, the VIEWPORT inside it scrolls, and the vertical bar rides the root —
+     the same structure the table body uses. */
   .ledger-columns-panel-list {
+    position: relative;
     display: flex;
     flex: 1;
     flex-direction: column;
     min-height: 0;
-    overflow-y: auto;
+  }
+
+  .ledger-columns-panel-list-viewport {
+    flex: 1;
+    min-height: 0;
+  }
+
+  .ledger-columns-panel-list-viewport > div {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
   }
 
   .ledger-columns-panel-zone {

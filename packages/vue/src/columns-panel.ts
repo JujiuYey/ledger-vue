@@ -16,6 +16,7 @@ import {
 } from "vue";
 
 import { DragDropManager, Feedback } from "@dnd-kit/dom";
+import { ScrollAreaRoot, ScrollAreaScrollbar, ScrollAreaThumb, ScrollAreaViewport } from "reka-ui";
 import { Sortable } from "@dnd-kit/dom/sortable";
 
 import { columnEnableResizing, columnHeaderText, isInternalColumn, rawColumnSizing } from "./build-columns";
@@ -343,39 +344,50 @@ const ColumnsPanelContent = defineComponent({
           )
         ]),
 
-        h(
-          "div",
-          { ref: listEl, class: "ledger-columns-panel-list" },
-          zones.value
-            .filter(zone => zone.columns.length > 0)
-            .map(zone =>
-              h(
-                "div",
-                {
-                  key: zone.id,
-                  class: "ledger-columns-panel-zone",
-                  "data-pinned": zone.id !== "center" || undefined
-                },
-                [
-                  zone.id !== "center" ? zoneCaption(zone.id, props.labels, props.icons) : null,
-                  ...zone.columns.map((column, index) =>
-                    h(ColumnsPanelItem, {
-                      key: column.id,
-                      column,
-                      draggedId: draggedId.value,
-                      icons: props.icons,
-                      index,
-                      labels: props.labels,
-                      manager,
-                      orderable: orderable.value,
-                      table: props.table,
-                      zone: zone.id
-                    })
-                  )
-                ]
-              )
-            )
-        )
+        // The list scrolls through the same reka ScrollArea the table body uses — a floating
+        // scrollbar, not the host's native one (the panel is teleported to the body, where a
+        // native classic scrollbar would clash with the table's floating bars).
+        h(ScrollAreaRoot, { asChild: true, type: "always" }, {
+          default: () => [
+            h("div", { ref: listEl, class: "ledger-columns-panel-list" }, [
+              h(ScrollAreaViewport, { class: "ledger-columns-panel-list-viewport" }, {
+                default: () =>
+                  zones.value
+                    .filter(zone => zone.columns.length > 0)
+                    .map(zone =>
+                      h(
+                        "div",
+                        {
+                          key: zone.id,
+                          class: "ledger-columns-panel-zone",
+                          "data-pinned": zone.id !== "center" || undefined
+                        },
+                        [
+                          zone.id !== "center" ? zoneCaption(zone.id, props.labels, props.icons) : null,
+                          ...zone.columns.map((column, index) =>
+                            h(ColumnsPanelItem, {
+                              key: column.id,
+                              column,
+                              draggedId: draggedId.value,
+                              icons: props.icons,
+                              index,
+                              labels: props.labels,
+                              manager,
+                              orderable: orderable.value,
+                              table: props.table,
+                              zone: zone.id
+                            })
+                          )
+                        ]
+                      )
+                    )
+              }),
+              h(ScrollAreaScrollbar, { class: "ledger-scrollbar", orientation: "vertical" }, {
+                default: () => h(ScrollAreaThumb, { class: "ledger-scrollbar-thumb" })
+              })
+            ])
+          ]
+        })
       ]);
   }
 });
