@@ -1,6 +1,6 @@
 {
   "name": "ledger-vue",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "A Vue-native DataTable on TanStack Table and TanStack Virtual — the Vue port of ledger.",
   "license": "MIT",
