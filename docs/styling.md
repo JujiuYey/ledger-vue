@@ -197,7 +197,7 @@ subset:
 <script setup lang="ts">
 import { ArrowDownWideNarrow, ArrowUpNarrowWide } from "lucide-vue-next";
 
-import { DataTable } from "@coldsmirk/ledger-vue";
+import { DataTable } from "@jujiuyey/ledger-vue";
 </script>
 
 <template>
@@ -233,7 +233,7 @@ wrapper's own props becoming the defaults ([getting-started.md](getting-started.
 
 ```vue
 <script setup lang="ts">
-import { DataTable, zhCN } from "@coldsmirk/ledger-vue";
+import { DataTable, zhCN } from "@jujiuyey/ledger-vue";
 </script>
 
 <template>

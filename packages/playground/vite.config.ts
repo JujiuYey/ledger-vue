@@ -11,9 +11,9 @@ export default defineConfig({
     // Resolve the library to its TypeScript/Vue sources (same pattern as the root vitest
     // config): the playground live-reloads library edits with no build step.
     alias: [
-      { find: "@coldsmirk/ledger-vue/styles.css", replacement: fromHere("../vue/src/styles.css") },
-      { find: "@coldsmirk/ledger-vue/locales", replacement: fromHere("../vue/src/locales.ts") },
-      { find: "@coldsmirk/ledger-vue", replacement: fromHere("../vue/src/index.ts") }
+      { find: "@jujiuyey/ledger-vue/styles.css", replacement: fromHere("../vue/src/styles.css") },
+      { find: "@jujiuyey/ledger-vue/locales", replacement: fromHere("../vue/src/locales.ts") },
+      { find: "@jujiuyey/ledger-vue", replacement: fromHere("../vue/src/index.ts") }
     ]
   },
   server: {

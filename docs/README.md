@@ -1,6 +1,6 @@
 # ledger documentation
 
-`@coldsmirk/ledger-vue` — a Vue-native `<DataTable>` on TanStack Table v9 and TanStack Virtual v3. One sentence teaches the whole API: **the behavior layer speaks TanStack's language, the presentation layer speaks the stylesheet's.**
+`@jujiuyey/ledger-vue` — a Vue-native `<DataTable>` on TanStack Table v9 and TanStack Virtual v3. One sentence teaches the whole API: **the behavior layer speaks TanStack's language, the presentation layer speaks the stylesheet's.**
 
 Start with [getting-started.md](getting-started.md); the guides are grounded in the implemented behavior and each one is authoritative for its feature.
 

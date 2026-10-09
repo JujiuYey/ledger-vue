@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { ColumnDef } from "@coldsmirk/ledger-vue";
+import type { ColumnDef } from "@jujiuyey/ledger-vue";
 
 import type { Person } from "../data";
 
-import { createColumnHelper, DataTable, DataTableColumnsPanel, DataTablePagination, DataTableSearch, useDataTable } from "@coldsmirk/ledger-vue";
+import { createColumnHelper, DataTable, DataTableColumnsPanel, DataTablePagination, DataTableSearch, useDataTable } from "@jujiuyey/ledger-vue";
 import { computed, h } from "vue";
 
 import { makePeople } from "../data";

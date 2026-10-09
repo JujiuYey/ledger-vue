@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { ColumnDef, DataTableHandle } from "@coldsmirk/ledger-vue";
+import type { ColumnDef, DataTableHandle } from "@jujiuyey/ledger-vue";
 
-import { createColumnHelper, DataTable } from "@coldsmirk/ledger-vue";
+import { createColumnHelper, DataTable } from "@jujiuyey/ledger-vue";
 import { computed, ref } from "vue";
 
 import { useCopy, useLangLabels } from "../i18n";

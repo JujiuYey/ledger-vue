@@ -8,9 +8,9 @@ All three modes to `"server"`, state observed through the trios, data refetched 
 
 ```vue
 <script setup lang="ts">
-import type { ColumnFiltersState, PaginationState, SortingState } from "@coldsmirk/ledger-vue";
+import type { ColumnFiltersState, PaginationState, SortingState } from "@jujiuyey/ledger-vue";
 
-import { DataTable } from "@coldsmirk/ledger-vue";
+import { DataTable } from "@jujiuyey/ledger-vue";
 import { ref, watch } from "vue";
 
 import { auditColumns } from "./audit-columns";
@@ -115,7 +115,7 @@ The trios are plain controlled props, so URL state slots straight in â€” the His
 
 ```vue
 <script setup lang="ts">
-import type { SortingState } from "@coldsmirk/ledger-vue";
+import type { SortingState } from "@jujiuyey/ledger-vue";
 
 import { ref } from "vue";
 
@@ -149,7 +149,7 @@ The same shape works for any slice (a real router â€” vue-router's query, say â€
 
 ```vue
 <script setup lang="ts">
-import { DataTableSelectionBar, toCsv, useDataTable } from "@coldsmirk/ledger-vue";
+import { DataTableSelectionBar, toCsv, useDataTable } from "@jujiuyey/ledger-vue";
 
 const table = useDataTable({ /* â€¦ */ });
 
@@ -210,7 +210,7 @@ A `display` column, propagation-stopped like every injected control ([rows.md](r
 ```ts
 import { h } from "vue";
 
-import { createColumnHelper } from "@coldsmirk/ledger-vue";
+import { createColumnHelper } from "@jujiuyey/ledger-vue";
 
 const helper = createColumnHelper<Person>();
 
@@ -234,7 +234,7 @@ Pin it to the end (`:default-column-pinning="{ start: [], end: ['actions'] }"` â
 Commit locally first, reconcile with the server, and let a rejection put the cell back into editing ([editing.md](editing.md)):
 
 ```ts
-import type { DataTableEditCommit } from "@coldsmirk/ledger-vue";
+import type { DataTableEditCommit } from "@jujiuyey/ledger-vue";
 
 async function commitEdit({ row, column, value, previousValue }: DataTableEditCommit<Person>) {
   people.value = people.value.map(person =>

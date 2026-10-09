@@ -4,9 +4,9 @@ Cells become editable by declaring `meta.edit` on their column. **Rendering the 
 
 ```vue
 <script setup lang="ts">
-import type { ColumnDef, DataTableEditCommit } from "@coldsmirk/ledger-vue";
+import type { ColumnDef, DataTableEditCommit } from "@jujiuyey/ledger-vue";
 
-import { checkboxEditor, createColumnHelper, DataTable, numberEditor, selectEditor, textEditor } from "@coldsmirk/ledger-vue";
+import { checkboxEditor, createColumnHelper, DataTable, numberEditor, selectEditor, textEditor } from "@jujiuyey/ledger-vue";
 import { ref } from "vue";
 
 const helper = createColumnHelper<Person>();
@@ -163,7 +163,7 @@ What a commit leaves behind still belongs to the cell rather than to the control
 
 ```vue
 <script setup lang="ts">
-import type { DataTableRowEditCommit } from "@coldsmirk/ledger-vue";
+import type { DataTableRowEditCommit } from "@jujiuyey/ledger-vue";
 
 const handleRowEditCommit = async ({ row, values }: DataTableRowEditCommit<Person>) => {
   await api.updatePerson(row.original.id, values);

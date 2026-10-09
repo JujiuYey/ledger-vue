@@ -7,7 +7,7 @@ Columns are **raw TanStack `ColumnDef`s** — ledger has no bespoke column DSL. 
 `createColumnHelper` is re-exported from the main entry (never import `@tanstack/*` directly). Renderers — `header`, `cell`, `footer` — return `VNodeChild`: `h()` output, a component, or plain text, and `flexRender` (also re-exported) resolves the function forms:
 
 ```ts
-import { createColumnHelper } from "@coldsmirk/ledger-vue";
+import { createColumnHelper } from "@jujiuyey/ledger-vue";
 import { h } from "vue";
 
 const helper = createColumnHelper<Person>();

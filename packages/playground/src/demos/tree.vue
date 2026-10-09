@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { ColumnDef } from "@coldsmirk/ledger-vue";
+import type { ColumnDef } from "@jujiuyey/ledger-vue";
 
 import type { Region } from "../data";
 
-import { createColumnHelper, DataTable } from "@coldsmirk/ledger-vue";
+import { createColumnHelper, DataTable } from "@jujiuyey/ledger-vue";
 import { computed } from "vue";
 
 import { makeRegions } from "../data";

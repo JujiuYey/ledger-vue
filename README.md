@@ -6,7 +6,7 @@ edition of [`ledger`](https://github.com/coldsmirk/ledger) (`@coldsmirk/ledger-m
 Same design doctrine as the original: the behavior layer speaks TanStack's language (raw
 `ColumnDef`s, TanStack state shapes, TanStack option names), the presentation layer is owned by
 a single layered stylesheet with kebab-case classes and `--ledger-*` custom properties. One
-package publishes: `@coldsmirk/ledger-vue`; `ledger-vue-playground` is the demo app.
+package publishes: `@jujiuyey/ledger-vue`; `ledger-vue-playground` is the demo app.
 
 ```
 pnpm install
@@ -31,13 +31,13 @@ the upstream reference.
 ## Install
 
 ```bash
-pnpm add @coldsmirk/ledger-vue
+pnpm add @jujiuyey/ledger-vue
 ```
 
 ```ts
-import { DataTable, createColumnHelper } from "@coldsmirk/ledger-vue";
-import "@coldsmirk/ledger-vue/styles.css";          // once, app entry
-import { zhCN } from "@coldsmirk/ledger-vue/locales"; // optional locale preset
+import { DataTable, createColumnHelper } from "@jujiuyey/ledger-vue";
+import "@jujiuyey/ledger-vue/styles.css";          // once, app entry
+import { zhCN } from "@jujiuyey/ledger-vue/locales"; // optional locale preset
 ```
 
 Peers: `vue ^3.5`. Dependencies: `@tanstack/vue-table`, `@tanstack/vue-virtual`, `@dnd-kit/dom`
@@ -47,7 +47,7 @@ Peers: `vue ^3.5`. Dependencies: `@tanstack/vue-table`, `@tanstack/vue-virtual`,
 
 ```vue
 <script setup lang="ts">
-import { createColumnHelper, DataTable } from "@coldsmirk/ledger-vue";
+import { createColumnHelper, DataTable } from "@jujiuyey/ledger-vue";
 
 const helper = createColumnHelper<Person>();
 
@@ -68,7 +68,7 @@ const columns = [
 
 The behavior surface keeps its names; only the framework mechanics change:
 
-| React (`@coldsmirk/ledger-mantine`) | Vue (`@coldsmirk/ledger-vue`) |
+| React (`@coldsmirk/ledger-mantine`) | Vue (`@jujiuyey/ledger-vue`) |
 | --- | --- |
 | `<DataTable data={data} columns={columns} …/>` | `<DataTable :data :columns …/>` |
 | Controlled slice `state.x` + `onXChange` | `v-model:x` (emits the resolved value) or `:x` + `@update:x` |

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { ColumnDef, RowSelectionState } from "@coldsmirk/ledger-vue";
+import type { ColumnDef, RowSelectionState } from "@jujiuyey/ledger-vue";
 
 import type { Person } from "../data";
 
-import { createColumnHelper, DataTable, DataTableSelectionBar, toCsv, useDataTable } from "@coldsmirk/ledger-vue";
+import { createColumnHelper, DataTable, DataTableSelectionBar, toCsv, useDataTable } from "@jujiuyey/ledger-vue";
 import { computed, h, ref } from "vue";
 
 import { makePeople } from "../data";

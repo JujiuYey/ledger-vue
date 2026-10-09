@@ -44,7 +44,7 @@ Row-level interaction, master–detail panels, tree data, and the loading/empty 
 
 ```vue
 <script setup lang="ts">
-import type { DataTableRowReorder } from "@coldsmirk/ledger-vue";
+import type { DataTableRowReorder } from "@jujiuyey/ledger-vue";
 import { ref } from "vue";
 
 const steps = ref(initialSteps);
@@ -82,7 +82,7 @@ Row order **is** data order — there is no order state, so a completed drag han
 
 ```vue
 <script setup lang="ts">
-import type { Row } from "@coldsmirk/ledger-vue";
+import type { Row } from "@jujiuyey/ledger-vue";
 import { h } from "vue";
 
 // The panel is content: a component call, h() nodes, text — anything a render

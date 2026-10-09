@@ -1,11 +1,11 @@
 # Getting started
 
-`@coldsmirk/ledger-vue` renders a Vue-native `<DataTable>` on top of TanStack Table v9 (behavior) and TanStack Virtual v3 (row virtualization). One sentence teaches the whole API: **the behavior layer speaks TanStack's language, the presentation layer speaks the stylesheet's.**
+`@jujiuyey/ledger-vue` renders a Vue-native `<DataTable>` on top of TanStack Table v9 (behavior) and TanStack Virtual v3 (row virtualization). One sentence teaches the whole API: **the behavior layer speaks TanStack's language, the presentation layer speaks the stylesheet's.**
 
 ## Installation
 
 ```bash
-pnpm add @coldsmirk/ledger-vue
+pnpm add @jujiuyey/ledger-vue
 ```
 
 Peer dependencies (the host application provides them):
@@ -14,14 +14,14 @@ Peer dependencies (the host application provides them):
 | --- | --- |
 | `vue` | `^3.5.0` |
 
-`@tanstack/vue-table` and `@tanstack/vue-virtual` are **direct dependencies**, not peers — consumers import everything from `@coldsmirk/ledger-vue` and never from `@tanstack/*`. (So are `reka-ui` — the popover engine — and `@dnd-kit/dom`, the drag-and-drop engine behind reordering.) Everything a table needs (`createColumnHelper`, `flexRender`, every state type) is re-exported from the main entry.
+`@tanstack/vue-table` and `@tanstack/vue-virtual` are **direct dependencies**, not peers — consumers import everything from `@jujiuyey/ledger-vue` and never from `@tanstack/*`. (So are `reka-ui` — the popover engine — and `@dnd-kit/dom`, the drag-and-drop engine behind reordering.) Everything a table needs (`createColumnHelper`, `flexRender`, every state type) is re-exported from the main entry.
 
 ## Stylesheet
 
 Import the stylesheet once, in the app entry — no other stylesheet is required:
 
 ```ts
-import "@coldsmirk/ledger-vue/styles.css";
+import "@jujiuyey/ledger-vue/styles.css";
 ```
 
 All rules live in the `ledger` [cascade layer](https://developer.mozilla.org/docs/Web/CSS/@layer) and define their own `--ledger-*` design tokens: light values by default, dark values under the OS preference, under `data-color-scheme="dark"` on the document element (`<html>`), or under `data-color-scheme` on a table's own root — which the component's `colorScheme` prop writes. Dark mode needs nothing from the host, and theming is overriding those variables on any ancestor. See [styling.md](styling.md).
@@ -30,7 +30,7 @@ All rules live in the `ledger` [cascade layer](https://developer.mozilla.org/doc
 
 ```vue
 <script setup lang="ts">
-import { createColumnHelper, DataTable } from "@coldsmirk/ledger-vue";
+import { createColumnHelper, DataTable } from "@jujiuyey/ledger-vue";
 
 interface Person {
   id: string;
@@ -99,7 +99,7 @@ import {
   DataTablePagination,
   DataTableSearch,
   useDataTable
-} from "@coldsmirk/ledger-vue";
+} from "@jujiuyey/ledger-vue";
 
 const props = defineProps<{ people: Person[] }>();
 
@@ -140,7 +140,7 @@ Call the composable once in setup: the instance is for the component's life, and
 Configuration is ordinary Vue — there is no provider and no theme object to feed defaults through. Every user-visible string flows through `labels` (English defaults, complete `zhCN` preset), passed to the table and every compound component that renders copy:
 
 ```ts
-import { zhCN } from "@coldsmirk/ledger-vue/locales";
+import { zhCN } from "@jujiuyey/ledger-vue/locales";
 ```
 
 ```vue

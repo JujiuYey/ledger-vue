@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { ColumnDef, LedgerSize } from "@coldsmirk/ledger-vue";
+import type { ColumnDef, LedgerSize } from "@jujiuyey/ledger-vue";
 
 import type { Product } from "../data";
 
-import { createColumnHelper, DataTable } from "@coldsmirk/ledger-vue";
+import { createColumnHelper, DataTable } from "@jujiuyey/ledger-vue";
 import { computed, h, ref } from "vue";
 
 import { makeProducts } from "../data";

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onScopeDispose, ref, watchEffect } from "vue";
 
-import "@coldsmirk/ledger-vue/styles.css";
+import "@jujiuyey/ledger-vue/styles.css";
 
 import "./app.css";
 

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { ColumnDef, DataTableHandle } from "@coldsmirk/ledger-vue";
+import type { ColumnDef, DataTableHandle } from "@jujiuyey/ledger-vue";
 
 import type { LogEntry } from "../data";
 
-import { createColumnHelper, DataTable } from "@coldsmirk/ledger-vue";
+import { createColumnHelper, DataTable } from "@jujiuyey/ledger-vue";
 import { computed, h, ref, watch } from "vue";
 
 import { makeLogs } from "../data";

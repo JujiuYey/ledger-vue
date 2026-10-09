@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { ColumnDef, DataTableEditCommit } from "@coldsmirk/ledger-vue";
+import type { ColumnDef, DataTableEditCommit } from "@jujiuyey/ledger-vue";
 
 import type { Product } from "../data";
 
-import { checkboxEditor, createColumnHelper, DataTable, numberEditor, selectEditor, textEditor } from "@coldsmirk/ledger-vue";
+import { checkboxEditor, createColumnHelper, DataTable, numberEditor, selectEditor, textEditor } from "@jujiuyey/ledger-vue";
 import { computed, ref, watch } from "vue";
 
 import { makeProducts } from "../data";

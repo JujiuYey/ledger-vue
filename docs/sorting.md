@@ -30,7 +30,7 @@ The sorting slice follows the standard trio — TanStack's `SortingState` shape 
 
 ```vue
 <script setup lang="ts">
-import type { SortingState } from "@coldsmirk/ledger-vue";
+import type { SortingState } from "@jujiuyey/ledger-vue";
 import { ref } from "vue";
 
 // controlled; or defaultSorting for uncontrolled

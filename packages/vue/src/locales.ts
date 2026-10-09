@@ -3,7 +3,7 @@
  * subpath so applications can import a preset without touching the main entry:
  *
  * ```ts
- * import { zhCN } from "@coldsmirk/ledger-vue/locales";
+ * import { zhCN } from "@jujiuyey/ledger-vue/locales";
  * <DataTable :labels="zhCN" ... />
  * ```
  */

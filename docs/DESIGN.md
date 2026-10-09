@@ -22,7 +22,7 @@ One sentence teaches the whole API. TanStack Table (v9 since 2026-08-21; born on
 
 **Feature bar**: the union of what MUI DataGrid and Ant Design Table are used for in real applications — sorting, filtering, pagination, selection, pinning, resizing, visibility, master–detail, inline editing, virtualization — *without* referencing either library's API design.
 
-**Naming**: *ledger* — the bound book of rows and columns. It joins the owner's desk-object family (abacus computes, inkstone writes, ledger records). Repo `coldsmirk/ledger-vue` (sibling of `coldsmirk/ledger`, the React edition), package `@coldsmirk/ledger-vue`, component `<DataTable>` — the project name carries the identity, the component name describes the capability.
+**Naming**: *ledger* — the bound book of rows and columns. It joins the owner's desk-object family (abacus computes, inkstone writes, ledger records). Repo `coldsmirk/ledger-vue` (sibling of `coldsmirk/ledger`, the React edition), package `@jujiuyey/ledger-vue`, component `<DataTable>` — the project name carries the identity, the component name describes the capability.
 
 ## 2. The naming constitution
 
@@ -48,7 +48,7 @@ Deliberate divergences from TanStack, each with cause:
 - **Columns are raw `ColumnDef`s.** No bespoke column DSL: every column-level TanStack capability is automatically present. Presentation concerns ride the typed `meta` extension.
 - **State shapes are TanStack's verbatim** (`SortingState`, `RowSelectionState`, …); knowledge and code transfer directly, and the escape-hatch instance never disagrees with the props.
 - **Escape hatches are never sealed**: `tableOptions` merges through to `useTable`, `useDataTable` returns the bare TanStack instance, `flexRender` is re-exported.
-- **TanStack is an implementation dependency, not a peer**: consumers import everything from `@coldsmirk/ledger-vue` and never from `@tanstack/*`.
+- **TanStack is an implementation dependency, not a peer**: consumers import everything from `@jujiuyey/ledger-vue` and never from `@tanstack/*`.
 
 ## 3. Structural decisions
 

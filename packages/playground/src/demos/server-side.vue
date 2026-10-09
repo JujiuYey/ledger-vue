@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { ColumnDef, ColumnFiltersState, PaginationState, SortingState } from "@coldsmirk/ledger-vue";
+import type { ColumnDef, ColumnFiltersState, PaginationState, SortingState } from "@jujiuyey/ledger-vue";
 
 import type { Person } from "../data";
 import type { Lang } from "../i18n";
 
-import { createColumnHelper, DataTable, DataTableSearch, useDataTable } from "@coldsmirk/ledger-vue";
+import { createColumnHelper, DataTable, DataTableSearch, useDataTable } from "@jujiuyey/ledger-vue";
 import { computed, h, ref, watch } from "vue";
 
 import { makePeople, roleOptions } from "../data";

@@ -9,13 +9,13 @@ export default defineConfig({
   resolve: {
     // Resolve workspace packages to their TypeScript/Vue sources so tests run against source
     // (fast, no build step) and share a single Vue instance. The subpath entries come FIRST —
-    // string aliases prefix-match, so a bare "@coldsmirk/ledger-vue" would rewrite
+    // string aliases prefix-match, so a bare "@jujiuyey/ledger-vue" would rewrite
     // ".../styles.css" onto ".../src/index.ts/styles.css" (packages/playground/vite.config.ts
     // carries the same pair).
     alias: {
-      "@coldsmirk/ledger-vue/styles.css": fromHere("./packages/vue/src/styles.css"),
-      "@coldsmirk/ledger-vue/locales": fromHere("./packages/vue/src/locales.ts"),
-      "@coldsmirk/ledger-vue": fromHere("./packages/vue/src/index.ts")
+      "@jujiuyey/ledger-vue/styles.css": fromHere("./packages/vue/src/styles.css"),
+      "@jujiuyey/ledger-vue/locales": fromHere("./packages/vue/src/locales.ts"),
+      "@jujiuyey/ledger-vue": fromHere("./packages/vue/src/index.ts")
     }
   },
   plugins: [vue()],

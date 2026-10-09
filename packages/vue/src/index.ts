@@ -1,5 +1,5 @@
 /**
- * `@coldsmirk/ledger-vue` — a Vue-native DataTable on TanStack Table + TanStack Virtual.
+ * `@jujiuyey/ledger-vue` — a Vue-native DataTable on TanStack Table + TanStack Virtual.
  *
  * The behavior layer speaks TanStack's language, the presentation layer speaks the stylesheet's
  * (docs/DESIGN.md). TanStack is an implementation dependency: everything a consumer needs is

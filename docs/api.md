@@ -1,6 +1,6 @@
 # API reference
 
-The complete public surface of `@coldsmirk/ledger-vue`, as implemented. Feature semantics live in the guides; this page is the lookup table.
+The complete public surface of `@jujiuyey/ledger-vue`, as implemented. Feature semantics live in the guides; this page is the lookup table.
 
 - [Entry points and re-exports](#entry-points-and-re-exports)
 - [`UseDataTableOptions`](#usedatatableoptionstdata) (behavior — composable mode and sugar mode alike)
@@ -30,10 +30,10 @@ import {
   defaultIcons,          // vendored Lucide glyph set
   createColumnHelper,    // TanStack, re-exported
   flexRender             // TanStack, re-exported
-} from "@coldsmirk/ledger-vue";
+} from "@jujiuyey/ledger-vue";
 
-import { zhCN } from "@coldsmirk/ledger-vue/locales";
-import "@coldsmirk/ledger-vue/styles.css";
+import { zhCN } from "@jujiuyey/ledger-vue/locales";
+import "@jujiuyey/ledger-vue/styles.css";
 </script>
 ```
 
@@ -360,7 +360,7 @@ Per-column control rides `meta.export`: `false` excludes the column entirely; `{
 
 ## Labels
 
-`DataTableLabels` (all keys and defaults in [i18n.md](i18n.md)); `defaultLabels` is the English set; `zhCN` ships from `@coldsmirk/ledger-vue/locales`; `labels` props take partials, and `resolveLabels(partial | undefined)` merges one over `defaultLabels` — the same helper ledger's own chrome resolves with.
+`DataTableLabels` (all keys and defaults in [i18n.md](i18n.md)); `defaultLabels` is the English set; `zhCN` ships from `@jujiuyey/ledger-vue/locales`; `labels` props take partials, and `resolveLabels(partial | undefined)` merges one over `defaultLabels` — the same helper ledger's own chrome resolves with.
 
 ## Icons
 

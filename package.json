@@ -10,7 +10,7 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r run build",
-    "check:package": "pnpm -r --filter \"@coldsmirk/*\" exec publint && pnpm -r --filter \"@coldsmirk/*\" exec attw --pack .",
+    "check:package": "pnpm -r --filter \"@jujiuyey/*\" exec publint && pnpm -r --filter \"@jujiuyey/*\" exec attw --pack .",
     "clean": "pnpm -r run clean",
     "lint": "oxlint --fix .",
     "lint:check": "oxlint .",

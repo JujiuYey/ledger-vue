@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ColumnDef, VueContent } from "@coldsmirk/ledger-vue";
-import { createColumnHelper, DataTable, DataTableColumnsPanel, useDataTable } from "@coldsmirk/ledger-vue";
+import type { ColumnDef, VueContent } from "@jujiuyey/ledger-vue";
+import { createColumnHelper, DataTable, DataTableColumnsPanel, useDataTable } from "@jujiuyey/ledger-vue";
 import { computed, h } from "vue";
 
 import type { Person } from "../data";

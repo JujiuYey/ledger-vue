@@ -99,7 +99,7 @@ Ledger-private configuration and controllers ride `table.options.meta.ledger` (T
 
 ```vue
 <script setup lang="ts">
-import type { DataTableHandle } from "@coldsmirk/ledger-vue";
+import type { DataTableHandle } from "@jujiuyey/ledger-vue";
 import { ref } from "vue";
 
 const handle = ref<DataTableHandle<Person> | null>(null);
@@ -118,7 +118,7 @@ const handle = ref<DataTableHandle<Person> | null>(null);
 
 ```vue
 <script setup lang="ts">
-import type { DataTablePersistState } from "@coldsmirk/ledger-vue";
+import type { DataTablePersistState } from "@jujiuyey/ledger-vue";
 
 // layout set: sizing, visibility, order, pinning
 const peoplePersistence: DataTablePersistState = { key: "people-table" };

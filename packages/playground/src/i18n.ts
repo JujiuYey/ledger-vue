@@ -1,10 +1,10 @@
 import type { ComputedRef, InjectionKey, MaybeRefOrGetter } from "vue";
-import type { DataTableLabels } from "@coldsmirk/ledger-vue";
+import type { DataTableLabels } from "@jujiuyey/ledger-vue";
 import type { ShallowRef } from "vue";
 import { computed, inject, provide, ref, toValue, watchEffect } from "vue";
 
-import { defaultLabels } from "@coldsmirk/ledger-vue";
-import { zhCN } from "@coldsmirk/ledger-vue/locales";
+import { defaultLabels } from "@jujiuyey/ledger-vue";
+import { zhCN } from "@jujiuyey/ledger-vue/locales";
 
 /**
  * The playground ships in both languages, which is also the only way to see the `zhCN` locale

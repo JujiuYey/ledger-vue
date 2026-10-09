@@ -38,7 +38,7 @@ The `pagination` slice follows the standard trio with TanStack's `PaginationStat
 
 ```vue
 <script setup lang="ts">
-import type { PaginationState } from "@coldsmirk/ledger-vue";
+import type { PaginationState } from "@jujiuyey/ledger-vue";
 import { ref } from "vue";
 
 const pagination = ref<PaginationState>({ pageIndex: 0, pageSize: 20 });

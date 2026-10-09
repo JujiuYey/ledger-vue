@@ -2,7 +2,7 @@
 
 ```vue
 <script setup lang="ts">
-import { createColumnHelper, DataTable } from "@coldsmirk/ledger-vue";
+import { createColumnHelper, DataTable } from "@jujiuyey/ledger-vue";
 
 const helper = createColumnHelper<Person>();
 

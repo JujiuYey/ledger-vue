@@ -78,7 +78,7 @@ The imperative handle scrolls to a row by id, to a position in the page's own ro
 
 ```vue
 <script setup lang="ts">
-import type { DataTableHandle } from "@coldsmirk/ledger-vue";
+import type { DataTableHandle } from "@jujiuyey/ledger-vue";
 import { ref } from "vue";
 
 // A template ref carries the exposed handle — templates unwrap refs in prop

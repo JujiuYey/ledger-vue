@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type { ColumnDef, DataTableRowEditCommit, Row, TableInstance, VueContent } from "@coldsmirk/ledger-vue";
+import type { ColumnDef, DataTableRowEditCommit, Row, TableInstance, VueContent } from "@jujiuyey/ledger-vue";
 
 import type { Person } from "../data";
 
-import { createColumnHelper, DataTable, numberEditor, selectEditor, textEditor } from "@coldsmirk/ledger-vue";
+import { createColumnHelper, DataTable, numberEditor, selectEditor, textEditor } from "@jujiuyey/ledger-vue";
 import { computed, h, ref, watch } from "vue";
 
 import { makePeople, roleOptions } from "../data";
