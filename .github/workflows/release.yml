@@ -1,0 +1,76 @@
+name: Release
+
+# Publish @jujiuyey/ledger-vue to npm and cut a GitHub Release. Trigger: push a version
+# tag (v*) — e.g. `pnpm version:patch` then `git push --follow-tags`. The tag must match
+# the published package version. Release notes are GitHub's auto-generated ones
+# (Conventional Commit titles become the changelog entries).
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write # create the GitHub Release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: "https://registry.npmjs.org" # writes .npmrc so npm publish authenticates with NPM_TOKEN
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify the tag matches the published package version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="$(node -p "require('./packages/vue/package.json').version")"
+          if [ "$VERSION" != "$TAG_VERSION" ]; then
+            echo "::error::packages/vue version $VERSION does not match tag $GITHUB_REF_NAME"
+            exit 1
+          fi
+
+      # The full CI gate set (see ci.yml): a tag can point at a commit main's CI never ran on,
+      # and nothing may publish without passing everything CI would have required.
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint:check && pnpm lint:css:check
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
+
+      - name: Validate published package shape
+        run: pnpm check:package
+
+      - name: Publish to npm
+        # The publish token comes from the NPM_TOKEN repository secret; tokens bypass the
+        # per-publish 2FA prompt. No --provenance: npm provenance requires a public source
+        # repo — add it back if the repo becomes public.
+        run: pnpm --filter @jujiuyey/ledger-vue publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
