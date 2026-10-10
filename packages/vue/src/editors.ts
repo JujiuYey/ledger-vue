@@ -1,8 +1,10 @@
 import type { VueContent } from "./types";
-import type { VNode } from "vue";
 import { h } from "vue";
 
 import type { DataTableEditRenderer, DataTableInstantEditRenderer } from "./types";
+import type { SelectEditorOption } from "./select";
+
+import { LedgerSelect } from "./select";
 
 /**
  * The shipped editor renderers — conveniences, never the mechanism. Each is an ordinary
@@ -11,18 +13,11 @@ import type { DataTableEditRenderer, DataTableInstantEditRenderer } from "./type
  * All are native controls carrying the `ledger-input` / `ledger-checkbox` classes at the
  * context's `size` — the border marks the cell as an open editor, and the size keeps it inside
  * the row. A validation message rides the control as `ledger-input-error`, stacked under it by
- * the `ledger-editor-field` wrapper.
+ * the `ledger-editor-field` wrapper. The select editor is the one exception: its dropdown is a
+ * floating surface (reka's Select, `select.ts`), so picking behaves like the React edition's
+ * Mantine Select rather than like a native control.
  */
-
-/**
- * One option of the shipped select editor. A bare string is its own value and label; `group`
- * clusters options under a non-selectable caption. The Vue edition has no Mantine to borrow
- * `ComboboxData` from, so the shape is declared here.
- */
-export type SelectEditorOption
-  = | string
-    | { value: string; label?: string; disabled?: boolean }
-    | { group: string; items: SelectEditorOption[] };
+export type { SelectEditorOption } from "./select";
 
 /**
  * The editor's field: the control with its validation message stacked under it. The host's
@@ -34,28 +29,6 @@ function editorField(control: VueContent, error: string | null): VueContent {
     control,
     error ? h("div", { class: "ledger-input-error", role: "alert" }, error) : null
   ]);
-}
-
-function renderSelectOptions(options: SelectEditorOption[], selectedValue: unknown): VNode[] {
-  return options.map(option => {
-    if (typeof option === "string") {
-      return h("option", { selected: Object.is(String(selectedValue ?? ""), option), value: option }, option);
-    }
-
-    if ("group" in option) {
-      return h("optgroup", { label: option.group }, renderSelectOptions(option.items, selectedValue));
-    }
-
-    return h(
-      "option",
-      {
-        disabled: option.disabled || undefined,
-        selected: selectedValue !== null && selectedValue !== undefined && Object.is(String(selectedValue), option.value),
-        value: option.value
-      },
-      option.label ?? option.value
-    );
-  });
 }
 
 const renderTextEditor: DataTableEditRenderer<any, any> = ({
@@ -127,10 +100,9 @@ export function numberEditor(): DataTableEditRenderer<any, any> {
 }
 
 /**
- * A single-pick editor over the given options. In cell mode picking an option commits at once —
- * one cell is the whole session; in row mode it is one draft-bound field among the row's others,
- * and the row's own commit decides. A native `<select>` has no dropdown to open programmatically,
- * so the React edition's `defaultDropdownOpened` becomes the autofocus the host gives the control.
+ * A single-pick editor over the given options. In cell mode the dropdown opens with the editor
+ * and picking an option commits at once — one cell is the whole session; in row mode it is one
+ * draft-bound field among the row's others, and the row's own commit decides.
  */
 export function selectEditor(options: SelectEditorOption[]): DataTableEditRenderer<any, any> {
   return ({
@@ -140,30 +112,24 @@ export function selectEditor(options: SelectEditorOption[]): DataTableEditRender
     error,
     pending,
     mode,
-    autoFocus,
     label,
     size
   }) => editorField(
-    h(
-      "select",
-      {
-        "aria-invalid": error ? true : undefined,
-        "aria-label": label,
-        autofocus: autoFocus || undefined,
-        class: "ledger-input",
-        "data-size": size,
-        disabled: pending || undefined,
-        onChange: (event: Event) => {
-          const next = (event.target as HTMLSelectElement).value;
-          setValue(next);
+    h(LedgerSelect, {
+      "ariaLabel": label,
+      defaultOpen: mode === "cell" || undefined,
+      disabled: pending || undefined,
+      modelValue: value === null || value === undefined ? null : String(value),
+      options,
+      size,
+      "onUpdate:modelValue": (next: string | null) => {
+        setValue(next);
 
-          if (mode === "cell") {
-            void commit();
-          }
+        if (mode === "cell") {
+          void commit();
         }
-      },
-      renderSelectOptions(options, value)
-    ),
+      }
+    }),
     error
   );
 }

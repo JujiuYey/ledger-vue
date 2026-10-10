@@ -59,6 +59,7 @@ export const zhCN: DataTableLabels = {
 
   editColumn: column => `编辑${column}`,
   editPending: "保存中",
+  editSave: "保存",
 
   reorderRow: "拖拽调整行顺序",
   rowOrderingUnavailable: "清除排序、筛选和分组后才能调整行顺序",

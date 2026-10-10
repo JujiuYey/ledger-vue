@@ -3,7 +3,7 @@ import type { PropType, Ref } from "vue";
 import { computed, defineComponent, h, onMounted, onScopeDispose, ref, watch } from "vue";
 
 import { columnHeaderText } from "./build-columns";
-import { LedgerSpinner } from "./controls";
+import { LedgerSpinner, svgGlyph } from "./controls";
 import { useDataTableContext } from "./context";
 import { cellValue, normalizeEdit } from "./edit-meta";
 import { useGetStyles } from "./get-styles";
@@ -11,20 +11,24 @@ import { SIZES } from "./size";
 
 export { canEditCell } from "./edit-meta";
 
+/** The save affordance's glyph — the anatomy of the editor host, not a registry glyph. */
+const IconCheck = svgGlyph(() => [h("path", { d: "M20 6 9 17l-5-5" })]);
+
 /**
  * The editor hosts, for both modes. Each is a view of its session plus a keyboard surface: the
  * draft, the validation, the in-flight commit and the failure all belong to the controller, so
  * that a hidden column or a virtual scroll unmounting an editor takes nothing with it
  * (docs/architecture.md). The host renders no control of its own — the renderer the column
- * declared does (docs/editing.md#editors) — it supplies the context, the keyboard map, the blur
- * commit, and the pending presentation around it.
+ * declared does (docs/editing.md#editors) — it supplies the context, the keyboard map, the save
+ * affordance, and the pending presentation around it.
  *
  * Vue edition: rendered by the body as `h(CellEditor, { cell })` / `h(RowCellEditor, { cell })`.
  * React's useReducer redraw bump is a local ref counter the render tracks, the registration
  * layout effect is a post-flush watch over stable projections (register identity, row and column
  * id), and the registration itself is released on scope disposal. The Mantine `autoFocus` each
  * shipped input received becomes a mount-time focus of the first control, which covers custom
- * renderers too.
+ * renderers too. The React edition committed on blur; this edition never saves on focus loss —
+ * the save button does, and a pointerdown elsewhere cancels (docs/editing.md).
  */
 
 /**
@@ -99,9 +103,34 @@ export const CellEditor = defineComponent({
     // Cell mode's editor always takes focus as it mounts (the context's `autoFocus` is always
     // true here); the host focuses the first control, which is what the React edition's input
     // `autoFocus` did for the shipped controls.
+    //
+    // Clicking outside the editor cancels the session — this edition's replacement for the
+    // React edition's blur commit: nothing saves on focus loss, the save button does, and a
+    // pointerdown that lands elsewhere has nowhere to keep a draft. The select's portaled
+    // dropdown counts as inside — its surface carries `data-ledger-editor-surface` wherever it
+    // mounts — and `cancel` itself stands down while a write is out, so a click during the
+    // pending window is inert here without a check of its own.
+    const onDocumentPointerdown = (event: PointerEvent) => {
+      const host = hostRef.value;
+
+      if (!host) {
+        return;
+      }
+
+      const path = event.composedPath();
+
+      if (path.includes(host) || path.some(node => node instanceof Element && node.hasAttribute("data-ledger-editor-surface"))) {
+        return;
+      }
+
+      editing.value?.cancel();
+    };
+
     onMounted(() => {
       focusFirstControl(hostRef.value);
+      document.addEventListener("pointerdown", onDocumentPointerdown, true);
     });
+    onScopeDispose(() => document.removeEventListener("pointerdown", onDocumentPointerdown, true));
 
     return () => {
       const editingController = editing.value;
@@ -178,19 +207,33 @@ export const CellEditor = defineComponent({
           "aria-busy": pending || undefined,
           "aria-label": pending ? labels().editPending : undefined,
           "data-pending": pending || undefined,
-          onBlur: event => {
-            // Blur commits — unless focus moved elsewhere inside the editor (e.g. a select option).
-            if (!(event.currentTarget as Node).contains(event.relatedTarget as Node | null)) {
-              void editingController.commit();
-            }
-          },
           onClick: (event: MouseEvent) => event.stopPropagation(),
           onDblclick: (event: MouseEvent) => event.stopPropagation(),
           onKeydown: handleKeyDown,
           ref: hostRef,
           ...useGetStyles()("cellEditor")
         },
-        [editor, pending ? h(LedgerSpinner, { size: 12 }) : null]
+        [
+          editor,
+          // The explicit save. Pointer-only by design: Enter saves from the control, the host's
+          // keyboard map owns Tab, and the click affordance is what the React edition's blur
+          // commit was.
+          h(
+            "button",
+            {
+              "aria-label": labels().editSave,
+              class: "ledger-editor-save",
+              disabled: pending || undefined,
+              tabindex: -1,
+              type: "button",
+              onClick: () => {
+                void editingController.commit();
+              }
+            },
+            [h(IconCheck)]
+          ),
+          pending ? h(LedgerSpinner, { size: 12 }) : null
+        ]
       );
     };
   }

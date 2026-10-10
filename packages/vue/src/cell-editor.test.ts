@@ -1833,3 +1833,118 @@ describe("the session context", () => {
     expect(elementByText("Name is required")).toBeTruthy();
   });
 });
+
+describe("editing commands (the Vue edition's explicit save)", () => {
+  it("saves from the button, showing pending while the write is out", async () => {
+    let resolveCommit: () => void = () => {};
+    const onEditCommit = vi.fn(() => new Promise<void>(resolve => {
+      resolveCommit = resolve;
+    }));
+
+    mountTable({
+      columns: nameColumn(),
+      data: people,
+      getRowId,
+      onEditCommit
+    });
+    await dblClickCell("Carol");
+
+    const save = buttonByName("Save") as HTMLButtonElement | null;
+
+    expect(save).toBeTruthy();
+    // Pointer-only by design: the keyboard saves with Enter, and Tab must stay the cell map.
+    expect(save?.getAttribute("tabindex")).toBe("-1");
+
+    setText(textbox()!, "Caroline");
+    save?.click();
+    await tick();
+
+    // Pending: the spinner shows, the button stands down.
+    expect(q(".ledger-cell-editor[data-pending]")).not.toBeNull();
+    expect(save?.disabled).toBe(true);
+
+    resolveCommit();
+    await eventually(() => q(".ledger-cell-editor") === null, "editor never closed");
+
+    expect(onEditCommit).toHaveBeenCalledWith(expect.objectContaining({ previousValue: "Carol", value: "Caroline" }));
+  });
+
+  it("a pointerdown outside the editor cancels instead of saving", async () => {
+    const onEditCommit = vi.fn();
+
+    mountTable({
+      columns: nameColumn(),
+      data: people,
+      getRowId,
+      onEditCommit
+    });
+    await dblClickCell("Carol");
+
+    setText(textbox()!, "Caroline");
+    document.body.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    await tick();
+
+    // Discarded, not saved: the editor is gone and the application never saw the draft.
+    expect(q(".ledger-cell-editor")).toBeNull();
+    expect(onEditCommit).not.toHaveBeenCalled();
+    expect(cellWithText("Carol")?.textContent).toBe("Carol");
+  });
+
+  it("the select's portaled surface counts as inside — a pointerdown there does not cancel", async () => {
+    const onEditCommit = vi.fn();
+
+    mountTable({
+      columns: nameColumn(),
+      data: people,
+      getRowId,
+      onEditCommit
+    });
+    await dblClickCell("Carol");
+
+    // A stand-in for the portaled dropdown: wherever it mounts, its surface declares itself.
+    const surface = document.createElement("div");
+
+    surface.setAttribute("data-ledger-editor-surface", "");
+    document.body.appendChild(surface);
+
+    setText(textbox()!, "Caroline");
+    surface.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    await tick();
+
+    expect(q(".ledger-cell-editor")).not.toBeNull();
+
+    press(textbox()!, "Enter");
+    await eventually(() => q(".ledger-cell-editor") === null, "editor never closed");
+    expect(onEditCommit).toHaveBeenCalledWith(expect.objectContaining({ value: "Caroline" }));
+  });
+
+  it("a pointerdown outside during a pending write is inert", async () => {
+    let resolveCommit: () => void = () => {};
+    const onEditCommit = vi.fn(() => new Promise<void>(resolve => {
+      resolveCommit = resolve;
+    }));
+
+    mountTable({
+      columns: nameColumn(),
+      data: people,
+      getRowId,
+      onEditCommit
+    });
+    await dblClickCell("Carol");
+
+    setText(textbox()!, "Caroline");
+    (buttonByName("Save") as HTMLButtonElement).click();
+
+    await eventually(() => q(".ledger-cell-editor[data-pending]") !== null, "pending never showed");
+
+    document.body.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    await tick();
+
+    // The session holds through the click: cancel stands down while a write is out.
+    expect(q(".ledger-cell-editor")).not.toBeNull();
+
+    resolveCommit();
+    await eventually(() => q(".ledger-cell-editor") === null, "editor never closed");
+    expect(onEditCommit).toHaveBeenCalledTimes(1);
+  });
+});

@@ -694,13 +694,25 @@
     color: var(--ledger-color-dimmed);
   }
 
+  /* An open editor sits inside its cell with air on every side — the Vue edition's inset; the
+     React edition ran its editor flush. The block padding is the row's natural height minus its
+     separator minus the control at that table size, split in two, so opening an editor never
+     moves the row: 31 − 1 − 30, 37 − 1 − 30, 43 − 1 − 36, 51 − 1 − 42, 61 − 1 − 50. `xs` has
+     nothing left over — the control is the row. */
   .ledger-cell[data-editing] {
-    padding-block: 2px;
+    padding-block: 3px;
   }
 
-  /* An `xs` row is as tall as the smallest input Mantine draws: the editor takes the whole of it. */
   .ledger-root[data-size="xs"] .ledger-cell[data-editing] {
     padding-block: 0;
+  }
+
+  .ledger-root[data-size="lg"] .ledger-cell[data-editing] {
+    padding-block: 4px;
+  }
+
+  .ledger-root[data-size="xl"] .ledger-cell[data-editing] {
+    padding-block: 5px;
   }
 
   .ledger-cell-editor {
@@ -712,6 +724,58 @@
 
   .ledger-cell-editor[data-pending] {
     opacity: 0.7;
+  }
+
+  /* The shipped editors' field: the control spanning the cell with its validation message
+     stacked under it. */
+  .ledger-editor-field {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .ledger-editor-field .ledger-input {
+    width: 100%;
+  }
+
+  .ledger-input-error {
+    font-size: var(--ledger-font-size-xs);
+    color: var(--ledger-color-red-light-color);
+  }
+
+  /* The host's explicit save — the pointer affordance this edition has instead of the React
+     edition's blur commit. Keyboard users save with Enter; the button skips Tab on purpose
+     (tabindex -1 in the host) so the cell-to-cell map stays untouched. */
+  .ledger-editor-save {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: var(--ledger-control-height);
+    height: var(--ledger-control-height);
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    background-color: var(--ledger-color-body);
+    border: 1px solid var(--ledger-color-default-border);
+    border-radius: var(--ledger-radius-default);
+  }
+
+  .ledger-editor-save:hover {
+    background-color: var(--ledger-color-default-hover);
+  }
+
+  .ledger-editor-save:focus-visible {
+    outline: 2px solid var(--ledger-primary-color-filled);
+    outline-offset: -1px;
+  }
+
+  .ledger-editor-save:disabled {
+    cursor: default;
+    opacity: 0.5;
   }
 
   /* Instant columns: the live control keeps its place while its write is out — the pending
@@ -1213,6 +1277,7 @@
 
   .ledger-button[data-size="xs"],
   .ledger-checkbox[data-size="xs"],
+  .ledger-input[data-size="xs"],
   .ledger-select[data-size="xs"],
   .ledger-multiselect[data-size="xs"],
   .ledger-pagination-bar[data-size="xs"] {
@@ -1225,6 +1290,7 @@
 
   .ledger-button[data-size="md"],
   .ledger-checkbox[data-size="md"],
+  .ledger-input[data-size="md"],
   .ledger-select[data-size="md"],
   .ledger-multiselect[data-size="md"],
   .ledger-pagination-bar[data-size="md"] {
@@ -1237,6 +1303,7 @@
 
   .ledger-button[data-size="lg"],
   .ledger-checkbox[data-size="lg"],
+  .ledger-input[data-size="lg"],
   .ledger-select[data-size="lg"],
   .ledger-multiselect[data-size="lg"],
   .ledger-pagination-bar[data-size="lg"] {
@@ -1249,6 +1316,7 @@
 
   .ledger-button[data-size="xl"],
   .ledger-checkbox[data-size="xl"],
+  .ledger-input[data-size="xl"],
   .ledger-select[data-size="xl"],
   .ledger-multiselect[data-size="xl"],
   .ledger-pagination-bar[data-size="xl"] {
@@ -1599,6 +1667,96 @@
   .ledger-select-option[aria-disabled] {
     cursor: default;
     opacity: 0.5;
+  }
+
+  /* ------------------------------------------------------------------------------------------
+   * Editor select — the reka Select the shipped `selectEditor()` draws (select.ts). The trigger
+   * rides `.ledger-input`; the panel is portaled, so only its surface lives here.
+   * ------------------------------------------------------------------------------------------ */
+  .ledger-editor-select-trigger {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    text-align: start;
+    cursor: pointer;
+  }
+
+  .ledger-editor-select-trigger[data-placeholder] {
+    color: var(--ledger-color-placeholder);
+  }
+
+  .ledger-editor-select-chevron {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    color: var(--ledger-color-dimmed);
+    transition: rotate 150ms ease;
+  }
+
+  .ledger-editor-select-trigger[aria-expanded="true"] .ledger-editor-select-chevron {
+    rotate: 180deg;
+  }
+
+  .ledger-editor-select-content {
+    z-index: var(--ledger-z-index-popover);
+    min-width: var(--reka-select-trigger-width);
+    max-height: var(--reka-select-content-available-height);
+    padding: 4px;
+    overflow-y: auto;
+    background-color: var(--ledger-color-body);
+    border: 1px solid var(--ledger-color-default-border);
+    border-radius: var(--ledger-radius-default);
+    box-shadow: var(--ledger-shadow-md);
+  }
+
+  .ledger-editor-select-content:focus {
+    outline: none;
+  }
+
+  .ledger-editor-select-item {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-height: 28px;
+    padding: 4px var(--ledger-control-pad-inline);
+    font-size: var(--ledger-control-font-size);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+
+  .ledger-editor-select-item[data-highlighted] {
+    background-color: var(--ledger-color-gray-light);
+  }
+
+  .ledger-editor-select-item[data-disabled] {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .ledger-editor-select-check {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    margin-inline-start: auto;
+    color: var(--ledger-primary-color-filled);
+  }
+
+  .ledger-editor-select-group-label {
+    padding: 6px var(--ledger-control-pad-inline) 2px;
+    font-size: var(--ledger-font-size-xs);
+    font-weight: 500;
+    color: var(--ledger-color-dimmed);
+  }
+
+  .ledger-editor-select-scroll {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 25px;
+    color: var(--ledger-color-dimmed);
+    cursor: default;
   }
 
   /* ------------------------------------------------------------------------------------------

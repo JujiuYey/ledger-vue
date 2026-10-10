@@ -96,6 +96,10 @@ export interface DataTableLabels {
    */
   editColumn: (column: string) => string;
   editPending: string;
+  /**
+   * The save affordance an open cell editor carries.
+   */
+  editSave: string;
 
   /* Row ordering (enableRowOrdering) */
   /**
@@ -172,6 +176,7 @@ export const defaultLabels: DataTableLabels = {
 
   editColumn: column => `Edit ${column}`,
   editPending: "Saving",
+  editSave: "Save",
 
   reorderRow: "Drag to reorder row",
   rowOrderingUnavailable: "Clear sorting, filters, and grouping to reorder rows",
