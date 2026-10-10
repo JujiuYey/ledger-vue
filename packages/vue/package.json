@@ -10,6 +10,13 @@
     "tanstack-table",
     "virtualization"
   ],
+  "homepage": "https://github.com/JujiuYey/ledger-vue/tree/main/packages/vue#readme",
+  "bugs": "https://github.com/JujiuYey/ledger-vue/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JujiuYey/ledger-vue.git",
+    "directory": "packages/vue"
+  },
   "license": "MIT",
   "author": {
     "name": "Venus"
