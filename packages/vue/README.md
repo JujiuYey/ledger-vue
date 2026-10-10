@@ -8,6 +8,9 @@ Same design doctrine as the original: the behavior layer speaks TanStack's langu
 a single layered stylesheet with kebab-case classes and `--ledger-*` custom properties. One
 package publishes: `@jujiuyey/ledger-vue`; `ledger-vue-playground` is the demo app.
 
+**Live demo:** [jujiuyey.github.io/ledger-vue](https://jujiuyey.github.io/ledger-vue/) — every
+feature area, bilingual, each page with a view-source drawer.
+
 ```
 pnpm install
 pnpm test            # Vitest once
