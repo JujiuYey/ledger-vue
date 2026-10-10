@@ -1703,12 +1703,17 @@
     z-index: var(--ledger-z-index-popover);
     min-width: var(--reka-select-trigger-width);
     max-height: var(--reka-select-content-available-height);
-    padding: 4px;
-    overflow-y: auto;
+    overflow: hidden;
     background-color: var(--ledger-color-body);
     border: 1px solid var(--ledger-color-default-border);
     border-radius: var(--ledger-radius-default);
     box-shadow: var(--ledger-shadow-md);
+  }
+
+  /* SelectViewport (shadcn): `p-1`, and the popper-width floor so short lists span the trigger. */
+  .ledger-editor-select-viewport {
+    min-width: var(--reka-select-trigger-width);
+    padding: 4px;
   }
 
   .ledger-editor-select-content:focus {
@@ -1716,30 +1721,49 @@
   }
 
   .ledger-editor-select-item {
+    /* SelectItem (shadcn): `relative ... pr-8` — the row reserves the check's column, and the
+       focus outline is killed in favor of the highlight background (`outline-hidden` +
+       `focus:bg-accent`, the Vue edition's [data-highlighted]). */
+    position: relative;
     display: flex;
-    gap: 8px;
     align-items: center;
     min-height: 28px;
     padding: 4px var(--ledger-control-pad-inline);
+    padding-inline-end: 28px;
     font-size: var(--ledger-control-font-size);
     white-space: nowrap;
     cursor: pointer;
+    outline: none;
   }
 
   .ledger-editor-select-item[data-highlighted] {
     background-color: var(--ledger-color-gray-light);
   }
 
+  /* The picked option reads as picked: the primary wash with primary text, the way the React
+     edition's Mantine Select marked it. Declared after the highlight so it wins when a checked
+     row is also the highlighted one. */
+  .ledger-editor-select-item[data-state="checked"] {
+    font-weight: 500;
+    color: var(--ledger-primary-color-filled);
+    background-color: var(--ledger-primary-color-light);
+  }
+
   .ledger-editor-select-item[data-disabled] {
+    pointer-events: none;
     cursor: default;
     opacity: 0.5;
   }
 
+  /* The check slot (shadcn: `absolute right-2 h-3.5 w-3.5`). */
   .ledger-editor-select-check {
-    flex: none;
+    position: absolute;
+    inset-inline-end: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 14px;
     height: 14px;
-    margin-inline-start: auto;
     color: var(--ledger-primary-color-filled);
   }
 

@@ -110,6 +110,16 @@ export type LedgerFilterOption
     | { value: string; label?: string; disabled?: boolean; group?: string };
 
 /**
+ * One option of the shipped select editor (docs/editing.md#editors). A bare string is its own
+ * value and label; `group` clusters options under a non-selectable caption. The Vue edition has
+ * no Mantine to borrow `ComboboxData` from, so the shape is declared here.
+ */
+export type SelectEditorOption
+  = | string
+    | { value: string; label?: string; disabled?: boolean }
+    | { group: string; items: SelectEditorOption[] };
+
+/**
  * Per-variant configuration, discriminated by `variant`: each member carries exactly the keys its
  * control reads. A union rather than one optional-everything object because the alternative type-
  * checks configurations the renderer then ignores — `{ variant: "text", options }` has nowhere to

@@ -1,10 +1,9 @@
 import type { VueContent } from "./types";
 import { h } from "vue";
 
-import type { DataTableEditRenderer, DataTableInstantEditRenderer } from "./types";
-import type { SelectEditorOption } from "./select";
+import type { DataTableEditRenderer, DataTableInstantEditRenderer, SelectEditorOption } from "./types";
 
-import { LedgerSelect } from "./select";
+import LedgerSelect from "./select.vue";
 
 /**
  * The shipped editor renderers — conveniences, never the mechanism. Each is an ordinary
@@ -17,7 +16,7 @@ import { LedgerSelect } from "./select";
  * floating surface (reka's Select, `select.ts`), so picking behaves like the React edition's
  * Mantine Select rather than like a native control.
  */
-export type { SelectEditorOption } from "./select";
+export type { SelectEditorOption } from "./types";
 
 /**
  * The editor's field: the control with its validation message stacked under it. The host's

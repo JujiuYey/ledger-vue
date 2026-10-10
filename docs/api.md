@@ -265,7 +265,7 @@ interface DataTableRowReorder<TData> {
 }
 ```
 
-The shipped editors — `textEditor()`, `numberEditor()`, `selectEditor(options)`, and the instant `checkboxEditor()` — are exported renderer factories implemented on these public contexts ([editing.md](editing.md#the-shipped-editors)). All are native controls carrying the `ledger-input` / `ledger-checkbox` classes; `selectEditor`'s options are bare strings, `{ value, label?, disabled? }` records, or `{ group, items }` clusters.
+The shipped editors — `textEditor()`, `numberEditor()`, `selectEditor(options)`, and the instant `checkboxEditor()` — are exported renderer factories implemented on these public contexts ([editing.md](editing.md#the-shipped-editors)). All carry the `ledger-input` / `ledger-checkbox` classes; `selectEditor`'s options are bare strings, `{ value, label?, disabled? }` records, or `{ group, items }` clusters. The text/number editors are native controls; the select editor is the reka Select (`select.vue`, transcribed from shadcn-vue) with the floating dropdown its classes style.
 
 ## Filter types
 

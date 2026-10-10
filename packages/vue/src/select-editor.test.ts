@@ -7,7 +7,7 @@ import type { ColumnDef } from "./types";
 
 import DataTable from "./data-table.vue";
 import { selectEditor, textEditor } from "./editors";
-import type { SelectEditorOption } from "./select";
+import type { SelectEditorOption } from "./types";
 
 interface Person {
   id: string;

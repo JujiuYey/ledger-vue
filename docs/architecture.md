@@ -14,7 +14,8 @@ Contributor-facing: how the package is built, the internal pipelines, and the in
 | `get-styles.ts` | The Styles API as one pure function (`createGetStyles`) plus its own provide/inject key (`provideGetStyles` / `useGetStyles`) — replaces Mantine's `useStyles` machinery and the React edition's `use-styles-revision.ts` entirely |
 | `build-columns.ts` | Injected row-drag/selection/expander columns (and the `rowDragColumn` / `selectionColumn` / `expanderColumn` merge); `meta.filter` → `filterFn` gap-filling; the raw-sizing registry (`rawColumnSizing`) |
 | `use-responsive-columns.ts` | `meta.hiddenFrom` / `visibleFrom`: breakpoint-driven column presence via `matchMedia` against a local px scale — no theme context, so hook mode works wherever `useDataTable` does |
-| `table-header.ts` / `table-body.ts` / `table-footer.ts` | Render components (`defineComponent` + `h()`): header (sort/actions/resize/reorder), body (display rows, virtualization, pinned rows, group cells, skeletons), footer |
+| `select.vue` | The editor's select, the library's first SFC component — transcribed from shadcn-vue's `select` registry set; new components land as SFCs, and the render-function components convert to this form in waves ([DESIGN.md](DESIGN.md)) |
+| `table-header.ts` / `table-body.ts` / `table-footer.ts` | Render components (`defineComponent` + `h()`, converting to SFCs in waves): header (sort/actions/resize/reorder), body (display rows, virtualization, pinned rows, group cells, skeletons), footer |
 | `use-cell-editing.ts` | The cell editing session: draft, write record, pending, error, commit, gate, editor registry, deferred unmount-commit |
 | `use-row-editing.ts` | The row editing session: the per-row draft store and its baseline, the atomic commit, pending, error, gate, editor registry |
 | `use-instant-editing.ts` | The instant columns' transient edits: per-target write record, in-flight request, error, editor registry |

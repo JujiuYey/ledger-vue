@@ -93,7 +93,7 @@ Each is implemented purely on the public context above — proof the context suf
 | --- | --- | --- |
 | `textEditor()` | a text `ledger-input` | Enter / blur commits |
 | `numberEditor()` | a decimal `ledger-input` (text over `type: "number"` — no spin buttons); an emptied input holds `null` | Enter / blur commits |
-| `selectEditor(options)` | a native `<select>` over the options; in cell mode the control takes the host's autofocus | **picking an option commits at once** in cell mode; a draft-bound field in row mode |
+| `selectEditor(options)` | the reka Select over the options (`select.vue`, shadcn-vue transcription); in cell mode **the dropdown opens with the editor** | **picking an option commits at once** in cell mode; a draft-bound field in row mode |
 | `checkboxEditor()` | a live checkbox — an **instant** renderer: `edit: { instant: checkboxEditor() }` | **each toggle commits immediately**; never enters edit mode |
 
 ## Validation and async commits

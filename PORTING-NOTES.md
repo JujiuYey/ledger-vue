@@ -13,6 +13,18 @@ is English. Single-line Conventional Commits.
 `icons.ts`, `types.ts`, `use-slice.ts`, `context.ts`, `use-data-table.ts`, `build-columns.ts`,
 `styles.css`, plus `package.json` / `vite.config.ts` / workspace configs.
 
+## Components are SFCs, transcribed from shadcn-vue (decided 2026-10)
+
+New components are `<script setup lang="ts">` SFCs, started from the shadcn-vue registry source
+(`npx shadcn-vue add <name>` into a scratch project) and transcribed: reka-ui stays the behavior
+engine, shadcn's Tailwind classes become `ledger-*` classes resolved by `styles.css`, and lucide
+glyphs stay `svgGlyph` anatomy. Styles never enter the SFCs (no `<style scoped>` — the layered
+stylesheet is the one presentation layer), and composables stay `.ts`. `select.vue` is the
+reference transcription; the existing render-function components convert in waves
+(controls family first, then the table parts) — a wave ships only with all six gates green.
+The React 1:1 file mapping that governed the port is retired (DESIGN.md, the Vue edition's
+decisions); the React source remains the behavior spec wherever shadcn-vue has no counterpart.
+
 ## The React → Vue mapping (the whole doctrine, short)
 
 1. **Imports**: `@tanstack/react-table` → `@tanstack/vue-table` (it re-exports all of
